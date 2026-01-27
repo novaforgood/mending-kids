@@ -38,32 +38,7 @@ export async function addItem(payload: InventoryPayload) {
   }
 }
 
-/* Update an existing inventory item */
-export async function updateItem(
-  id: number,
-  payload: Partial<InventoryPayload>
-) {
-  const updates: Record<string, any> = { ...payload };
-
-  if (
-    payload.quantity !== undefined &&
-    payload.market_value_per_unit !== undefined
-  ) {
-    updates.total_value =
-      payload.quantity * payload.market_value_per_unit;
-  }
-
-  const { error } = await supabaseServer
-    .from("inventory")
-    .update(updates)
-    .eq("id", id);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-}
-
-/* Optional: delete inventory item */
+// delete item
 export async function deleteItem(id: number) {
   const { error } = await supabaseServer
     .from("inventory")

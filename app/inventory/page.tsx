@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchInventory, addItem, updateItem } from "./actions";
+import { fetchInventory, addItem, deleteItem } from "./actions";
 
 type InventoryItem = {
   id: number;
@@ -25,8 +25,6 @@ export default function InventoryPage() {
   const [unit, setUnit] = useState("");
   const [marketValue, setMarketValue] = useState<number>(0);
 
-  const [editingId, setEditingId] = useState<number | null>(null);
-
   async function loadInventory() {
     const data = await fetchInventory();
     setItems(data);
@@ -39,26 +37,19 @@ export default function InventoryPage() {
   async function handleSubmit() {
     if (!manufacturer || !referenceNumber) return;
 
-    const payload = {
+    await addItem({
       manufacturer,
       reference_number: referenceNumber,
       quantity,
       unit,
       market_value_per_unit: marketValue,
-    };
-
-    if (editingId) {
-      await updateItem(editingId, payload);
-    } else {
-      await addItem(payload);
-    }
+    });
 
     setManufacturer("");
     setReferenceNumber("");
     setQuantity(0);
     setUnit("");
     setMarketValue(0);
-    setEditingId(null);
 
     loadInventory();
   }
@@ -108,7 +99,7 @@ export default function InventoryPage() {
           onClick={handleSubmit}
           className="mb-6 rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
         >
-          {editingId ? "Update Item" : "Add Item"}
+          Add Item
         </button>
 
         {/* Table */}
@@ -136,17 +127,13 @@ export default function InventoryPage() {
                   <td className="p-2 font-medium">${item.total_value}</td>
                   <td className="p-2">
                     <button
-                      className="text-blue-600 hover:underline"
-                      onClick={() => {
-                        setEditingId(item.id);
-                        setManufacturer(item.manufacturer);
-                        setReferenceNumber(item.reference_number);
-                        setQuantity(item.quantity);
-                        setUnit(item.unit);
-                        setMarketValue(item.market_value_per_unit);
+                      className="text-red-600 hover:underline"
+                      onClick={async () => {
+                        await deleteItem(item.id);
+                        loadInventory();
                       }}
                     >
-                      Edit
+                      Delete
                     </button>
                   </td>
                 </tr>
