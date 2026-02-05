@@ -3,10 +3,13 @@
 import { supabaseServer } from "@/lib/supabase/server";
 
 export type InventoryPayload = {
+  item_description: string;
   manufacturer: string;
   reference_number: string;
   quantity: number;
-  unit: string;
+  status: string;
+  mission: string;
+  expiration: Date;
   market_value_per_unit: number;
 };
 
