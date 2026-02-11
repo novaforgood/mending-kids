@@ -12,18 +12,18 @@ export async function fetchMissions() {
   return data;
 }
 
-export async function addMission(mission_name: string, equipment: string) {
+export async function addMission(mission_name: string, equipment: string, quantity: number) {  // Add quantity parameter
   const { error } = await supabaseServer
     .from("missions")
-    .insert({ mission_name, equipment });
+    .insert({ mission_name, equipment, quantity });  // Add quantity
 
   if (error) throw new Error(error.message);
 }
 
-export async function updateMission(id: number, mission_name: string, equipment: string) {
+export async function updateMission(id: number, mission_name: string, equipment: string, quantity: number) {  // Add quantity parameter
   const { error } = await supabaseServer
     .from("missions")
-    .update({ mission_name, equipment })
+    .update({ mission_name, equipment, quantity })  // Add quantity
     .eq("id", id);
 
   if (error) throw new Error(error.message);
