@@ -9,9 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@atlaskit/button": "^23.9.6",
+    "@atlaskit/drawer": "^11.0.27",
     "@atlaskit/dynamic-table": "^18.3.16",
-    "@atlaskit/icon": "^30.0.2",
+    "@atlaskit/form": "^15.3.5",
+    "@atlaskit/page": "^14.0.1",
+    "@atlaskit/right-side-panel": "^3.0.14",
     "@atlaskit/textfield": "^8.2.3",
     "@atlassian/aui": "^10.1.1",
     "@supabase/supabase-js": "^2.90.1",
