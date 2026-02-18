@@ -11,6 +11,7 @@ import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from '@atlaskit/icon/core/show-more-horizontal';
 
 import { fetchInventory, addItem, deleteItem } from "./actions";
+import DocumentationModal from "./documentation-modal";
 
 type InventoryItem = {
   id: number;
@@ -42,6 +43,7 @@ export default function InventoryPage() {
 
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("ASC");
+  const [isDocumentationModalOpen, setIsDocumentationModalOpen] = useState(false);
 
   async function loadInventory() {
     try {
@@ -149,7 +151,7 @@ export default function InventoryPage() {
   });
 
   const rows = sortedItems.map((item) => ({
-    key: item.id,
+    key: String(item.id),
     cells: [
       { content: item.item_description },
       { content: item.manufacturer },
@@ -174,7 +176,7 @@ export default function InventoryPage() {
               icon={EditIcon}
               label="Edit"
               // appearance="subtle"
-              onClick={() => console.log("Edit item", item.id)}
+              onClick={() => setIsDocumentationModalOpen(true)}
             />
 
             <IconButton
@@ -252,9 +254,12 @@ export default function InventoryPage() {
         />
       </div>
 
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: 32, display: "flex", gap: 8 }}>
         <Button appearance="primary" isLoading={loading} onClick={handleSubmit}>
           Add Item
+        </Button>
+        <Button appearance="default" onClick={() => setIsDocumentationModalOpen(true)}>
+          Add Documentation
         </Button>
       </div>
 
@@ -274,6 +279,15 @@ export default function InventoryPage() {
             No inventory items yet
           </div>
         }
+      />
+
+      <DocumentationModal
+        isOpen={isDocumentationModalOpen}
+        onClose={() => setIsDocumentationModalOpen(false)}
+        onNext={() => {
+          console.log("Next clicked");
+          setIsDocumentationModalOpen(false);
+        }}
       />
     </div>
   );
