@@ -21,17 +21,17 @@ export default function MissionInventoryPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="mx-auto max-w-4xl">
-        <h1 className="mb-6 text-2xl font-bold">Mission Inventory</h1>
+        <h1 className="mb-6 text-2xl font-bold text-black">Mission Inventory</h1>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((row) => (
             <div
               key={row.id}
               className="rounded-xl border bg-white p-4 shadow-sm"
             >
-              <p className="font-semibold text-gray-900">
-                {row.missions?.mission_name ?? `Mission #${row.mission_id}`}
+              <p className="font-semibold text-black">
+                {row.missions?.[0]?.mission_name ?? `Mission #${row.mission_id}`}
               </p>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-black">
                 Inventory #{row.inventory_id}
                 {row.quantity_used != null && ` · Qty: ${row.quantity_used}`}
               </p>
@@ -39,7 +39,7 @@ export default function MissionInventoryPage() {
           ))}
         </div>
         {rows.length === 0 && (
-          <p className="text-gray-500">No mission inventory entries yet.</p>
+          <p className="text-black">No mission inventory entries yet.</p>
         )}
       </div>
     </div>
