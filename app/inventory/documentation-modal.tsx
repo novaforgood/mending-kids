@@ -1,15 +1,25 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Button from "@atlaskit/button/new";
 import Textfield from "@atlaskit/textfield";
 import CameraIcon from "@atlaskit/icon/core/camera";
 import LinkIcon from "@atlaskit/icon/core/link";
 
+type ItemOption = {
+  id: number;
+  label: string;
+  market_value_per_unit: number;
+  valuation_source: string | null;
+  acquisition_method: string | null;
+};
+
 type DocumentationModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onNext: () => void;
+  onNext: (itemId: number, marketValue: number, valuationSource: string, acquisitionMethod: string) => void;
+  preSelectedItemId?: number | null;
+  items?: ItemOption[];
 };
 
 type UploadedFile = {
@@ -22,13 +32,44 @@ export default function DocumentationModal({
   isOpen,
   onClose,
   onNext,
+  preSelectedItemId = null,
+  items = [],
 }: DocumentationModalProps) {
+  const [selectedItemId, setSelectedItemId] = useState<number | "">(preSelectedItemId ?? "");
   const [marketValue, setMarketValue] = useState("");
   const [valuationSource, setValuationSource] = useState("");
   const [acquisitionMethod, setAcquisitionMethod] = useState("");
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Pre-fill fields whenever the modal opens or preSelectedItemId changes
+  useEffect(() => {
+    if (!isOpen) return;
+    const id = preSelectedItemId ?? "";
+    setSelectedItemId(id);
+    prefillFromItem(id);
+  }, [isOpen, preSelectedItemId]);
+
+  function prefillFromItem(id: number | "") {
+    if (id === "") {
+      setMarketValue("");
+      setValuationSource("");
+      setAcquisitionMethod("");
+      return;
+    }
+    const item = items.find((i) => i.id === id);
+    if (item) {
+      setMarketValue(item.market_value_per_unit > 0 ? String(item.market_value_per_unit) : "");
+      setValuationSource(item.valuation_source ?? "");
+      setAcquisitionMethod(item.acquisition_method ?? "");
+    }
+  }
+
+  function handleItemSelect(id: number | "") {
+    setSelectedItemId(id);
+    prefillFromItem(id);
+  }
 
   const aiSuggestedSources = [
     "https://www.amazon.com/JorVet-Veterinary-Grad...",
@@ -125,7 +166,15 @@ export default function DocumentationModal({
           <Button appearance="subtle" onClick={onClose}>
             Cancel
           </Button>
-          <Button appearance="primary" onClick={onNext}>
+          <Button
+            appearance="primary"
+            isDisabled={selectedItemId === ""}
+            onClick={() => {
+              if (selectedItemId !== "") {
+                onNext(selectedItemId, parseFloat(marketValue) || 0, valuationSource, acquisitionMethod);
+              }
+            }}
+          >
             Next
           </Button>
         </div>
@@ -143,6 +192,43 @@ export default function DocumentationModal({
           <p style={{ margin: "0 0 24px 0", fontSize: 13, color: "#6B778C" }}>
             <span style={{ color: "#DE350B" }}>*</span> indicates a required field
           </p>
+
+          {/* Item selector — only shown when not opened from a specific row */}
+          {preSelectedItemId === null && (
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: "block", marginBottom: 6, fontSize: 14, fontWeight: 500, color: "#172B4D" }}>
+                Select Item <span style={{ color: "#DE350B" }}>*</span>
+              </label>
+              <div style={{ position: "relative" }}>
+                <select
+                  value={selectedItemId}
+                  onChange={(e) => handleItemSelect(e.currentTarget.value === "" ? "" : Number(e.currentTarget.value))}
+                  style={{
+                    width: "100%",
+                    padding: "9px 36px 9px 12px",
+                    border: "2px solid #DFE1E6",
+                    borderRadius: 3,
+                    fontSize: 14,
+                    color: selectedItemId === "" ? "#6B778C" : "#172B4D",
+                    backgroundColor: "white",
+                    cursor: "pointer",
+                    appearance: "none",
+                    WebkitAppearance: "none",
+                  }}
+                >
+                  <option value="">Select an inventory item</option>
+                  {items.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#6B778C", fontSize: 12 }}>
+                  ▾
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Market Value per Unit */}
           <div style={{ marginBottom: 20 }}>

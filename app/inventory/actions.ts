@@ -41,6 +41,34 @@ export async function addItem(payload: InventoryPayload) {
   }
 }
 
+/* Update documentation fields on an existing item */
+export async function updateItemDocumentation(
+  id: number,
+  marketValuePerUnit: number,
+  valuationSource: string,
+  acquisitionMethod: string
+) {
+  const { data: item, error: fetchError } = await supabaseServer
+    .from("inventory")
+    .select("quantity")
+    .eq("id", id)
+    .single();
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  const { error } = await supabaseServer
+    .from("inventory")
+    .update({
+      market_value_per_unit: marketValuePerUnit,
+      total_value: item.quantity * marketValuePerUnit,
+      valuation_source: valuationSource,
+      acquisition_method: acquisitionMethod,
+    })
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
+}
+
 // delete item
 export async function deleteItem(id: number) {
   const { error } = await supabaseServer
