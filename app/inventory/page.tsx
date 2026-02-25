@@ -10,7 +10,7 @@ import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from '@atlaskit/icon/core/show-more-horizontal';
 
-import { fetchInventory, addItem, deleteItem } from "./actions";
+import { fetchInventory, addItem, deleteItem, updateItemDocumentation } from "./actions";
 import DocumentationModal from "./documentation-modal";
 
 type InventoryItem = {
@@ -25,6 +25,8 @@ type InventoryItem = {
   expiration: Date;
   market_value_per_unit: number;
   total_value: number;
+  valuation_source: string | null;
+  acquisition_method: string | null;
 };
 
 export default function InventoryPage() {
@@ -44,6 +46,7 @@ export default function InventoryPage() {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("ASC");
   const [isDocumentationModalOpen, setIsDocumentationModalOpen] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
 
   async function loadInventory() {
     try {
@@ -80,6 +83,8 @@ export default function InventoryPage() {
       expiration: new Date(expiration),
       market_value_per_unit: marketValue,
       total_value: quantity * marketValue,
+      valuation_source: null,
+      acquisition_method: null,
     };
 
     setItems((prev) => [optimisticItem, ...prev]);
@@ -125,6 +130,8 @@ export default function InventoryPage() {
       { key: "expiration", content: "Expiration", isSortable: true },
       { key: "market_value_per_unit", content: "Value / Unit", isSortable: true },
       { key: "total_value", content: "Total", isSortable: true },
+      { key: "valuation_source", content: "Valuation Source" },
+      { key: "acquisition_method", content: "Acquisition Method" },
       { key: "actions", content: "Actions", isSortable: false },
     ],
   };
@@ -162,6 +169,13 @@ export default function InventoryPage() {
       { content: item.expiration.toLocaleDateString() },
       { content: `$${item.market_value_per_unit.toFixed(2)}` },
       { content: `$${item.total_value.toFixed(2)}` },
+      { content: item.valuation_source ? (
+          <a href={item.valuation_source} target="_blank" rel="noreferrer" style={{ color: "#0052CC", fontSize: 13 }}>
+            {item.valuation_source}
+          </a>
+        ) : <span style={{ color: "#6B778C" }}>—</span>
+      },
+      { content: item.acquisition_method ?? <span style={{ color: "#6B778C" }}>—</span> },
       {
         content: (
           <div style={{ display: "flex", gap: 8 }}>
@@ -176,7 +190,10 @@ export default function InventoryPage() {
               icon={EditIcon}
               label="Edit"
               // appearance="subtle"
-              onClick={() => setIsDocumentationModalOpen(true)}
+              onClick={() => {
+                setSelectedItemId(item.id);
+                setIsDocumentationModalOpen(true);
+              }}
             />
 
             <IconButton
@@ -283,10 +300,23 @@ export default function InventoryPage() {
 
       <DocumentationModal
         isOpen={isDocumentationModalOpen}
-        onClose={() => setIsDocumentationModalOpen(false)}
-        onNext={() => {
-          console.log("Next clicked");
+        preSelectedItemId={selectedItemId}
+        items={items.map((i) => ({
+          id: i.id,
+          label: i.item_description || i.reference_number,
+          market_value_per_unit: i.market_value_per_unit,
+          valuation_source: i.valuation_source,
+          acquisition_method: i.acquisition_method,
+        }))}
+        onClose={() => {
           setIsDocumentationModalOpen(false);
+          setSelectedItemId(null);
+        }}
+        onNext={async (itemId: number, marketValue: number, valuationSource: string, acquisitionMethod: string) => {
+          await updateItemDocumentation(itemId, marketValue, valuationSource, acquisitionMethod);
+          await loadInventory();
+          setIsDocumentationModalOpen(false);
+          setSelectedItemId(null);
         }}
       />
     </div>
