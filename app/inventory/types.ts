@@ -10,4 +10,9 @@ export type InventoryItem = {
   expiration: Date;
   market_value_per_unit: number;
   total_value: number;
+  lot_number: string;
+  unit_of_measure: {
+    label: string;
+    value: string;
+  };
 };

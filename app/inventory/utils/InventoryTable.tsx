@@ -1,4 +1,3 @@
-// InventoryTable.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -8,15 +7,23 @@ import Button from "@atlaskit/button/new";
 import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from "@atlaskit/icon/core/show-more-horizontal";
+import GlobeIcon from "@atlaskit/icon/core/globe";
 import { InventoryItem } from "../types";
+import Lozenge from "@atlaskit/lozenge";
 
 interface InventoryTableProps {
   items: InventoryItem[];
   onAdd: () => void;
   onEdit: (item: InventoryItem) => void;
+  onView: (item: InventoryItem) => void;
 }
 
-export default function InventoryTable({ items, onAdd, onEdit }: InventoryTableProps) {
+export default function InventoryTable({
+  items,
+  onAdd,
+  onEdit,
+  onView,
+}: InventoryTableProps) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("ASC");
 
@@ -37,34 +44,84 @@ export default function InventoryTable({ items, onAdd, onEdit }: InventoryTableP
 
   const sortedItems = [...items].sort((a, b) => {
     if (!sortKey) return 0;
+
     const aVal = a[sortKey as keyof InventoryItem];
     const bVal = b[sortKey as keyof InventoryItem];
 
-    if (typeof aVal === "number" && typeof bVal === "number") return sortOrder === "ASC" ? aVal - bVal : bVal - aVal;
-    if (aVal instanceof Date && bVal instanceof Date) return sortOrder === "ASC" ? aVal.getTime() - bVal.getTime() : bVal.getTime() - aVal.getTime();
+    if (typeof aVal === "number" && typeof bVal === "number") {
+      return sortOrder === "ASC" ? aVal - bVal : bVal - aVal;
+    }
+
+    if (aVal instanceof Date && bVal instanceof Date) {
+      return sortOrder === "ASC"
+        ? aVal.getTime() - bVal.getTime()
+        : bVal.getTime() - aVal.getTime();
+    }
+
     return sortOrder === "ASC"
-      ? String(aVal).localeCompare(String(bVal))
-      : String(bVal).localeCompare(String(aVal));
+      ? String(aVal ?? "").localeCompare(String(bVal ?? ""))
+      : String(bVal ?? "").localeCompare(String(aVal ?? ""));
   });
 
   const rows = sortedItems.map((item) => ({
     key: item.id,
+    onClick: () => onView(item), // 👈 clicking row opens view mode
     cells: [
       { content: item.item_description },
       { content: item.manufacturer },
       { content: item.reference_number },
       { content: item.quantity ?? 0 },
-      { content: item.status ?? "-" },
-      { content: item.mission ?? "-" },
-      { content: item.expiration?.toLocaleDateString() ?? "-" },
-      { content: `$${item.market_value_per_unit?.toFixed(2) ?? "0.00"}` },
-      { content: `$${item.total_value?.toFixed(2) ?? "0.00"}` },
+      {
+        content: item.status ? (
+          <Lozenge>{item.status}</Lozenge>
+        ) : (
+          ""
+        ),
+      },
+      {
+        content: item.mission ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <GlobeIcon label="Mission" />
+            {item.mission}
+          </div>
+        ) : (
+          ""
+        ),
+      },
+      {
+        content: item.expiration
+          ? item.expiration.toLocaleDateString()
+          : "",
+      },
+      {
+        content: `$${item.market_value_per_unit?.toFixed(2) ?? "0.00"}`,
+      },
+      {
+        content: `$${item.total_value?.toFixed(2) ?? "0.00"}`,
+      },
       {
         content: (
           <div style={{ display: "flex", gap: 8 }}>
-            <IconButton icon={AddIcon} label="Add" onClick={onAdd} />
-            <IconButton icon={EditIcon} label="Edit" onClick={() => onEdit(item)} />
-            <IconButton icon={MoreIcon} label="More" onClick={() => console.log("More", item.id)} />
+            {/* <IconButton
+              icon={AddIcon}
+              label="Add"
+            /> */}
+            <IconButton
+              icon={EditIcon}
+              label="Edit"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(item);
+              }}
+            />
+            <IconButton
+              icon={MoreIcon}
+              label="More"
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log("More", item.id);
+              }}
+            />
           </div>
         ),
       },
@@ -73,6 +130,12 @@ export default function InventoryTable({ items, onAdd, onEdit }: InventoryTableP
 
   return (
     <>
+      <div style={{ marginBottom: 24, display: "flex", justifyContent: "flex-end" }}>
+        <Button appearance="primary" onClick={onAdd}>
+          Add Item
+        </Button>
+      </div>
+
       <DynamicTable
         head={head}
         rows={rows}
@@ -84,7 +147,17 @@ export default function InventoryTable({ items, onAdd, onEdit }: InventoryTableP
         }}
         rowsPerPage={10}
         defaultPage={1}
-        emptyView={<div style={{ padding: 16, textAlign: "center", color: "#6B778C" }}>No inventory items yet</div>}
+        emptyView={
+          <div
+            style={{
+              padding: 16,
+              textAlign: "center",
+              color: "#6B778C",
+            }}
+          >
+            No inventory items yet
+          </div>
+        }
       />
     </>
   );
