@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@atlaskit/button": "^23.10.0",
+    "@atlaskit/drawer": "^11.0.29",
+    "@atlaskit/form": "^15.3.7",
+    "@atlaskit/textfield": "^8.2.3",
     "@supabase/supabase-js": "^2.90.1",
     "next": "16.1.1",
     "react": "19.2.3",
