@@ -10,6 +10,9 @@ import DynamicTable from "@atlaskit/dynamic-table";
 import Tag from "@atlaskit/tag";
 import PageHeader from "@atlaskit/page-header";
 import { InventoryItem } from "../types";
+import { IconButton } from "@atlaskit/button/new";
+import AddIcon from "@atlaskit/icon/core/add";
+import Breadcrumbs, {BreadcrumbsItem} from '@atlaskit/breadcrumbs';
 
 interface Props {
   isOpen: boolean;
@@ -127,7 +130,10 @@ export default class ViewEditPanel extends React.Component<Props, State> {
                 flexWrap: "wrap",
                 }}
             >
-                <Button appearance="primary">
+                <Button
+                iconBefore={AddIcon}
+                appearance="discovery"
+                >
                 Add Items
                 </Button>
 
@@ -166,6 +172,13 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
     if (!item) return null;
 
+    const headerBreadcrumbs = (
+        <Breadcrumbs>
+            <BreadcrumbsItem text={item.reference_number} />
+            <BreadcrumbsItem text={item.location} />
+        </Breadcrumbs>
+    )
+
     return (
       <Drawer
         isOpen={isOpen}
@@ -180,6 +193,10 @@ export default class ViewEditPanel extends React.Component<Props, State> {
               IN STORAGE
             </Lozenge>{" "}
             {this.renderExpirationLozenge(item.expiration)}
+          </div>
+
+          <div style={{ marginBottom: 16, display: 'flex' }}>
+            <PageHeader breadcrumbs={headerBreadcrumbs} >{item.item_description}</PageHeader>
           </div>
 
           {/* Tabs */}
@@ -214,7 +231,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
           {/* Footer */}
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <PageHeader>{item.item_description}</PageHeader>
+            {/* <PageHeader>{item.item_description}</PageHeader> */}
 
             <div>
               <Button appearance="subtle" onClick={onClose}>

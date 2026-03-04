@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import DynamicTable from "@atlaskit/dynamic-table";
 import { IconButton } from "@atlaskit/button/new";
 import Button from "@atlaskit/button/new";
-import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from "@atlaskit/icon/core/show-more-horizontal";
 import GlobeIcon from "@atlaskit/icon/core/globe";
@@ -39,6 +38,7 @@ export default function InventoryTable({
       { key: "market_value_per_unit", content: "Value / Unit", isSortable: true },
       { key: "total_value", content: "Total", isSortable: true },
       { key: "actions", content: "Actions" },
+      // { key: "location", content: "Location", isSortable: true },
     ],
   };
 

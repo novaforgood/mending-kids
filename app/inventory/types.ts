@@ -15,4 +15,5 @@ export type InventoryItem = {
     label: string;
     value: string;
   };
+  location: string;
 };

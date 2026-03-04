@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@atlaskit/breadcrumbs": "^15.3.20",
     "@atlaskit/drawer": "^11.0.27",
     "@atlaskit/dropdown-menu": "^16.4.6",
     "@atlaskit/dynamic-table": "^18.3.16",
