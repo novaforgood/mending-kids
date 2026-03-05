@@ -1,16 +1,19 @@
 "use client";
 
+
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import styles from "./login.module.css";
+
 import { supabase } from "@/lib/supabase/supabaseClient";
 
-import Image from "next/image";
-import "./signup.css"; // only works if this CSS is treated as global; if it errors, use Option B below
 
 export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(false);
 
   const handleLogin = async () => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -28,67 +31,60 @@ export default function LoginPage() {
   };
 
   return (
+    <div className={styles.page}>
+      <div className={styles.card}>
+        <div className={styles.logoWrap}>
+          <Image src="/mending.logo.png" alt="Mending Kids" width={220} height={110} />
+        </div>
 
-    <div className="signup-page">
-      <div className="login-card">
-        {/* Logo */}
-        <div className="login-logo-wrapper">
-          <Image
-            src="/logo.png"
-            alt="Logo"
-            width={120}
-            height={120}
-            className="login-logo"
+        <div className={styles.title}>Log in to continue</div>
+
+        <div className={styles.field}>
+          <label className={styles.label}>
+            Email<span className={styles.required}>*</span>
+          </label>
+          <input
+            className={styles.input}
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
-        {/* Heading */}
-        <h1 className="login-title">Welcome back!</h1>
-
-        {/* Form */}
-        <label className="login-label">Email</label>
-        <input
-        className="login-input"
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-/>
-       <label className="login-label">Password</label>
-        <input
-          className="login-input"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <button className="login-button" type="button" onClick={handleLogin}>
-  Log In
-</button>
-<Link href="/signup">Create an account</Link>
-
-
-        {/* Footer link */}
-        <p className="login-help">
-          Don&apos;t know your login? Contact{" "}
-          <a href="#" className="login-link">
-            Mending Kids
-          </a>
-          .
-        </p>
-
-        {/* Bottom-right Nova pill */}
-        <div className="nova-pill">
-          <span className="nova-pill-text">
-            Website created by Nova, Tech for Good
-          </span>
-          <Image
-            src="/nova.png"
-            alt="Nova Logo"
-            width={18}
-            height={18}
-            className="nova-pill-icon"
+        <div className={styles.field}>
+          <label className={styles.label}>
+            Password<span className={styles.required}>*</span>
+          </label>
+          <input
+            className={styles.input}
+            type="password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </div>
+
+        <label className={styles.rememberRow}>
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+          />
+          Remember me
+        </label>
+
+        <button className={styles.button} type="button" onClick={handleLogin}>
+          Continue
+        </button>
+
+        <div className={styles.linkRow}>
+          <Link className={styles.link} href="/signup">
+            Create an account
+          </Link>
+        </div>
+
+        <div className={styles.footer}>Website created by Nova, Tech for Good</div>
       </div>
     </div>
   );
