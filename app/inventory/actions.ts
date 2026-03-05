@@ -6,11 +6,17 @@ export type InventoryPayload = {
   item_description: string;
   manufacturer: string;
   reference_number: string;
+  lot_number: string;
+  unit_of_measure: string;
+  typical_shelf_life: string;
+  location: string;
   quantity: number;
   status: string;
   mission: string;
   expiration: Date;
   market_value_per_unit: number;
+  valuation_source: string;
+  acquisition_method: string;
 };
 
 /* Fetch all inventory items */
