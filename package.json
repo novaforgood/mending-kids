@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@atlaskit/button": "^23.9.6",
+    "@atlaskit/drawer": "^11.0.29",
     "@atlaskit/dynamic-table": "^18.3.16",
+    "@atlaskit/form": "^15.3.7",
     "@atlaskit/icon": "^30.1.0",
     "@atlaskit/textfield": "^8.2.3",
     "@atlassian/aui": "^10.1.1",
