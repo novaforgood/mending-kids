@@ -74,6 +74,20 @@ export async function updateMission(
   if (error) throw new Error(error.message);
 }
 
+/** Fetch all editable fields for a single mission (used by Edit Mission panel) */
+export async function fetchMissionFull(id: number) {
+  const { data, error } = await supabaseServer
+    .from("missions")
+    .select(
+      "id, mission_name, description, start_date, end_date, location, category, status, doctor_name, doctor_email, doctor_phone, team_members, budget"
+    )
+    .eq("id", id)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 /** 4) Mission detail: header + items */
 export async function fetchMissionDetail(missionId: number) {
   // 1) Mission header
@@ -104,7 +118,7 @@ export async function fetchMissionDetail(missionId: number) {
 export async function fetchInventory() {
   const { data, error } = await supabaseServer
     .from("inventory")
-    .select("id, item_description, manufacturer, quantity, unit_of_measure")
+    .select("id, item_description, manufacturer, reference_number, expiration_date, quantity, unit_of_measure")
     .order("item_description", { ascending: true });
   if (error) throw new Error(error.message);
   return data ?? [];
@@ -136,6 +150,59 @@ export async function addMissionItem(input: {
     .update({ quantity: newQty })
     .eq("id", input.inventory_id);
   if (updateError) throw new Error(updateError.message);
+}
+
+// ─── Mission Members ────────────────────────────────────────────────────────
+
+/** Fetch all members for a mission */
+export async function fetchMissionMembers(missionId: number) {
+  const { data, error } = await supabaseServer
+    .from("mission_members")
+    .select("id, name, contact, form_filled, role")
+    .eq("mission_id", missionId)
+    .order("id", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/** Add a member to a mission */
+export async function addMissionMember(input: {
+  mission_id: number;
+  name: string;
+  contact?: string | null;
+  form_filled?: boolean;
+  role?: string | null;
+}) {
+  const { error } = await supabaseServer.from("mission_members").insert({
+    mission_id: input.mission_id,
+    name: input.name,
+    contact: input.contact ?? null,
+    form_filled: input.form_filled ?? false,
+    role: input.role ?? null,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Update a mission member */
+export async function updateMissionMember(
+  id: number,
+  patch: Partial<{ name: string; contact: string; form_filled: boolean; role: string }>
+) {
+  const { error } = await supabaseServer
+    .from("mission_members")
+    .update(patch)
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** Remove a member from a mission */
+export async function deleteMissionMember(id: number) {
+  const { error } = await supabaseServer
+    .from("mission_members")
+    .delete()
+    .eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 /** 6) Update quantity for an item on a mission */
