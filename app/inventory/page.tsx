@@ -119,8 +119,8 @@ export default function InventoryPage() {
               icon={EditIcon}
               label="Edit"
               onClick={() => {
-                setSelectedItem(item); // ✅ pass full item
-                setPanelMode("view"); // or "edit" for default edit
+                setSelectedItem(item);
+                setPanelMode("view");
                 setIsViewPanelOpen(true);
               }}
             />
@@ -160,7 +160,7 @@ export default function InventoryPage() {
       <ViewEditPanel
         isOpen={isViewPanelOpen}
         onClose={() => setIsViewPanelOpen(false)}
-        item={selectedItem} // ✅ full item object
+        item={selectedItem}
         mode={panelMode}
         setItems={setItems}
       />
