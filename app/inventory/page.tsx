@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { InventoryItem } from "./types";
 import InventoryTable from "./utils/InventoryTable";
 import ViewEditPanel from "./utils/ViewEditPanel";
-import AddItemPanel from "./utils/AddItemPanel";
 import { fetchInventory } from "./actions";
 
 export default function InventoryPage() {
@@ -69,15 +68,6 @@ export default function InventoryPage() {
         onAdd={handleAdd}
         onView={handleView}
         onEdit={handleEdit}
-      />
-
-      {/* Add Panel */}
-      <AddItemPanel
-        isOpen={isAddPanelOpen}
-        onClose={() => setIsAddPanelOpen(false)}
-        items={items}
-        setItems={setItems}
-        setError={setError}
       />
 
       {/* View / Edit Panel */}
