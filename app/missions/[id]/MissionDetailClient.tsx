@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import AddMemberPanel from "./AddMemberPanel";
 import EditMissionPanel from "./EditMissionPanel";
+import { updateMissionItem } from "../actions";
 
 type InventoryItem = {
   id: number;
@@ -78,6 +79,21 @@ function formatDateRange(start?: string | null, end?: string | null) {
 // ─── Tabs ───────────────────────────────────────────────────────────────────
 
 function ItemsTab({ items }: { items: MissionItem[] }) {
+  const [quantities, setQuantities] = useState<Record<number, number>>(
+    Object.fromEntries(items.map((r) => [r.id, r.quantity_used ?? 0]))
+  );
+
+  const handleIncrement = async (id: number) => {
+    const next = (quantities[id] ?? 0) + 1;
+    setQuantities((prev) => ({ ...prev, [id]: next }));
+    try {
+      await updateMissionItem(id, next);
+    } catch (err) {
+      console.error(err);
+      setQuantities((prev) => ({ ...prev, [id]: next - 1 }));
+    }
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">
@@ -117,7 +133,7 @@ function ItemsTab({ items }: { items: MissionItem[] }) {
               </td>
               <td className="py-3 pr-4">
                 <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-700">
-                  {row.quantity_used ?? 0}
+                  {quantities[row.id] ?? 0}
                 </span>
               </td>
               <td className="py-3 pr-4">
@@ -127,7 +143,10 @@ function ItemsTab({ items }: { items: MissionItem[] }) {
               </td>
               <td className="py-3">
                 <div className="flex items-center gap-2">
-                  <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
+                  <button
+                    onClick={() => handleIncrement(row.id)}
+                    className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100"
+                  >
                     +
                   </button>
                   <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">

@@ -209,7 +209,7 @@ export async function deleteMissionMember(id: number) {
 export async function updateMissionItem(id: number, quantity: number) {
   const { error } = await supabaseServer
     .from("mission_inventory")
-    .update({ quantity })
+    .update({ quantity_used: quantity })
     .eq("id", id);
 
   if (error) throw new Error(error.message);

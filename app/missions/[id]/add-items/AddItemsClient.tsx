@@ -67,6 +67,13 @@ export default function AddItemsClient({ missionId, inventory }: Props) {
     setSelected((prev) => ({ ...prev, [id]: Math.max(1, qty) }));
   };
 
+  const incrementQty = (id: number) => {
+    setSelected((prev) => {
+      if (id in prev) return { ...prev, [id]: prev[id] + 1 };
+      return { ...prev, [id]: 1 };
+    });
+  };
+
   const handleSubmit = async () => {
     if (selectedCount === 0) return;
     setSaving(true);
