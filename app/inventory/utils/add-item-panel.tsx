@@ -5,7 +5,7 @@ import Button from "@atlaskit/button/new";
 import Textfield from "@atlaskit/textfield";
 import CameraIcon from "@atlaskit/icon/core/camera";
 import LinkIcon from "@atlaskit/icon/core/link";
-import { InventoryPayload } from "./actions";
+import { InventoryPayload } from "../actions";
 
 type AddItemPanelProps = {
   isOpen: boolean;
