@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Drawer from "@atlaskit/drawer";
 import Button from "@atlaskit/button/new";
 import Form, { Field, FormFooter } from "@atlaskit/form";
 import Textfield from "@atlaskit/textfield";
-import { addMission, addMissionItem, fetchInventory } from "./actions";
+import { addMission, addMissionItem, addMissionMember, fetchInventory } from "./actions";
 
 type Props = {
   isOpen: boolean;
@@ -75,7 +74,7 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
 function NativeSelect({ name, options, required }: { name: string; options: string[]; required?: boolean }) {
   return (
     <Field<string> name={name} defaultValue="" isRequired={required}>
-      {({ fieldProps: { onChange, value, ...rest } }) => (
+      {({ fieldProps: { onChange, value, isDisabled, isInvalid, isRequired, ...rest } }) => (
         <select {...rest} value={value} onChange={(e) => onChange(e.target.value)} style={selectStyle}>
           <option value="">Select</option>
           {options.map((o) => (
@@ -133,6 +132,16 @@ export default function AddMissionPanel({ isOpen, onClose, onCreated }: Props) {
         status: "planned",
       });
 
+      if (created?.id && pendingValues.doctor_name) {
+        await addMissionMember({
+          mission_id: created.id,
+          name: pendingValues.doctor_name,
+          contact: pendingValues.doctor_email || pendingValues.doctor_phone || null,
+          role: "Lead Doctor",
+          form_filled: false,
+        });
+      }
+
       if (!skipItems && created?.id) {
         await Promise.all(
           Object.entries(selected).map(([inventoryId, qty]) =>
@@ -181,14 +190,37 @@ export default function AddMissionPanel({ isOpen, onClose, onCreated }: Props) {
 
   // ────────────────────────────────────────────────────────────────────────
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} width="medium" label="New Mission">
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 40,
+          background: "rgba(9,30,66,0.54)",
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? "auto" : "none",
+          transition: "opacity 220ms ease",
+        }}
+      />
+      {/* Panel */}
       <div
         style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 50,
+          width: 480,
+          background: "#fff",
+          boxShadow: "-4px 0 16px rgba(0,0,0,0.15)",
+          transform: isOpen ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 280ms cubic-bezier(0.2,0,0,1)",
           display: "flex",
           flexDirection: "column",
-          height: "100%",
           overflow: "hidden",
-          padding: "32px 0 32px 32px",
+          padding: "32px 32px 32px 32px",
           boxSizing: "border-box",
         }}
       >
@@ -596,6 +628,6 @@ export default function AddMissionPanel({ isOpen, onClose, onCreated }: Props) {
           );
         })()}
       </div>
-    </Drawer>
+    </>
   );
 }

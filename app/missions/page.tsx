@@ -14,16 +14,17 @@ type Mission = {
   location: string | null;
   category: string | null;
   status: string | null;
-  team_members: string | null;
   mission_inventory: { count: number }[];
+  memberCount: number;
 };
 
 const BADGE: Record<string, { bg: string; text: string }> = {
-  Medical:     { bg: "#e3fcef", text: "#006644" },
-  Dental:      { bg: "#e6f0ff", text: "#0052cc" },
-  Surgical:    { bg: "#fff0b3", text: "#974900" },
-  Educational: { bg: "#f3f0ff", text: "#403294" },
-  Other:       { bg: "#f4f5f7", text: "#42526e" },
+  ENT:         { bg: "#7c3aed", text: "#ffffff" },
+  Medical:     { bg: "#057a55", text: "#ffffff" },
+  Dental:      { bg: "#1a56db", text: "#ffffff" },
+  Surgical:    { bg: "#b45309", text: "#ffffff" },
+  Educational: { bg: "#5521b5", text: "#ffffff" },
+  Other:       { bg: "#374151", text: "#ffffff" },
 };
 
 function formatDate(iso: string | null) {
@@ -40,15 +41,18 @@ function MissionCard({ mission, onClick }: { mission: Mission; onClick: () => vo
   const badge = mission.category ? (BADGE[mission.category] ?? BADGE.Other) : null;
 
   const itemCount = mission.mission_inventory?.[0]?.count ?? 0;
-  const memberCount = mission.team_members
-    ? mission.team_members.split(",").map((s) => s.trim()).filter(Boolean).length
-    : 0;
+  const memberCount = mission.memberCount ?? 0;
 
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-xl shadow-sm p-5 cursor-pointer hover:shadow-md transition-shadow relative flex flex-col gap-0"
-      style={{ border: "1px solid rgba(11,18,40,0.08)" }}
+      className="bg-white cursor-pointer hover:shadow-md transition-shadow relative flex flex-col justify-between p-5"
+      style={{
+        height: 150,
+        border: "1px solid #8C8F97",
+        borderRadius: 8,
+        boxSizing: "border-box",
+      }}
     >
       {/* Category badge */}
       {badge && mission.category && (
@@ -60,48 +64,41 @@ function MissionCard({ mission, onClick }: { mission: Mission; onClick: () => vo
         </span>
       )}
 
-      {/* Mission name */}
-      <h2 className="font-bold text-[17px] text-[#051524] mb-3 pr-24 leading-snug">
-        {mission.mission_name}
-      </h2>
+      {/* Top section */}
+      <div>
+        {/* Mission name */}
+        <h2 className="font-bold text-[17px] text-[#051524] pr-20 leading-snug truncate">
+          {mission.mission_name}
+        </h2>
 
-      {/* Location */}
-      <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-1">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-          <circle cx="12" cy="10" r="3" />
-        </svg>
-        <span>{mission.location ?? "No location"}</span>
-      </div>
+        {/* Location */}
+        <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-1">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          <span className="truncate">{mission.location ?? "No location"}</span>
+        </div>
 
-      {/* Date range */}
-      <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
-        <span>{dateRange || "No dates set"}</span>
+        {/* Date range */}
+        <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-0.5">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span>{dateRange || "No dates set"}</span>
+        </div>
       </div>
 
       {/* Footer */}
-      <div className="border-t border-gray-100 pt-3 flex items-center gap-3 text-sm text-gray-500">
-        <div className="flex items-center gap-1">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-          </svg>
-          <span>{itemCount} items</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-          </svg>
-          <span>{memberCount} members</span>
-        </div>
+      <div className="flex items-center justify-between text-sm text-gray-400">
+        <span>
+          {itemCount} items{" "}
+          <span className="mx-1">·</span>
+          {memberCount} people
+        </span>
         <button
-          className="ml-auto text-gray-400 hover:text-gray-600 font-bold text-lg leading-none"
+          className="text-gray-400 hover:text-gray-600 font-bold text-lg leading-none"
           onClick={(e) => e.stopPropagation()}
           title="More options"
         >
@@ -131,7 +128,7 @@ export default function MissionsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] p-8">
+    <div className="min-h-screen bg-white p-8">
       <AddMissionPanel
         isOpen={isAddOpen}
         onClose={() => {
@@ -145,9 +142,10 @@ export default function MissionsPage() {
         <h1 className="text-2xl font-bold text-[#051524]">Missions</h1>
         <button
           onClick={() => setIsAddOpen(true)}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          style={{ fontFamily: "'Atlassian Sans', sans-serif", fontSize: 14, lineHeight: "20px" }}
         >
-          + Create Mission
+          Create Mission
         </button>
       </div>
 
