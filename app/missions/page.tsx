@@ -15,16 +15,16 @@ type Mission = {
   category: string | null;
   status: string | null;
   mission_inventory: { count: number }[];
-  mission_members: { count: number }[];
+  memberCount: number;
 };
 
 const BADGE: Record<string, { bg: string; text: string }> = {
   ENT:         { bg: "#7c3aed", text: "#ffffff" },
-  Medical:     { bg: "#e3fcef", text: "#006644" },
-  Dental:      { bg: "#e6f0ff", text: "#0052cc" },
-  Surgical:    { bg: "#fff0b3", text: "#974900" },
-  Educational: { bg: "#f3f0ff", text: "#403294" },
-  Other:       { bg: "#f4f5f7", text: "#42526e" },
+  Medical:     { bg: "#057a55", text: "#ffffff" },
+  Dental:      { bg: "#1a56db", text: "#ffffff" },
+  Surgical:    { bg: "#b45309", text: "#ffffff" },
+  Educational: { bg: "#5521b5", text: "#ffffff" },
+  Other:       { bg: "#374151", text: "#ffffff" },
 };
 
 function formatDate(iso: string | null) {
@@ -41,7 +41,7 @@ function MissionCard({ mission, onClick }: { mission: Mission; onClick: () => vo
   const badge = mission.category ? (BADGE[mission.category] ?? BADGE.Other) : null;
 
   const itemCount = mission.mission_inventory?.[0]?.count ?? 0;
-  const memberCount = mission.mission_members?.[0]?.count ?? 0;
+  const memberCount = mission.memberCount ?? 0;
 
   return (
     <div

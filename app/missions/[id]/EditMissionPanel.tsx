@@ -176,7 +176,7 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
               <div>
                 <PanelLabel required>Location</PanelLabel>
                 <Field<string> name="location" defaultValue={defaults.location ?? ""} isRequired>
-                  {({ fieldProps: { onChange, value, ...rest } }) => (
+                  {({ fieldProps: { onChange, value, isDisabled, isInvalid, isRequired, ...rest } }) => (
                     <select
                       {...rest}
                       value={value}

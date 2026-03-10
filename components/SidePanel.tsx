@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Drawer from "@atlaskit/drawer";
 import Button from "@atlaskit/button/new";
 
 // ─── Shared label primitives ─────────────────────────────────────────────────
@@ -71,26 +70,44 @@ export default function SidePanel({
   const handleCancel = onCancel ?? onClose;
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} width="medium" label={label}>
+    <>
+      {/* Backdrop */}
       <div
+        onClick={onClose}
         style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 40,
+          background: "rgba(9,30,66,0.54)",
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? "auto" : "none",
+          transition: "opacity 220ms ease",
+        }}
+      />
+
+      {/* Panel */}
+      <div
+        aria-label={label}
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 50,
+          width: 480,
+          background: "#fff",
+          boxShadow: "-4px 0 16px rgba(0,0,0,0.15)",
+          transform: isOpen ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 280ms cubic-bezier(0.2,0,0,1)",
           display: "flex",
           flexDirection: "column",
-          height: "100%",
           overflow: "hidden",
-          padding: "32px 0 32px 32px",
+          padding: "32px 32px 32px 32px",
           boxSizing: "border-box",
         }}
       >
         {/* Header */}
-        <div
-          style={{
-            flexShrink: 0,
-            paddingBottom: 12,
-            borderBottom: "1px solid #e4e6ea",
-            paddingRight: 16,
-          }}
-        >
+        <div style={{ flexShrink: 0, paddingBottom: 12, borderBottom: "1px solid #e4e6ea" }}>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#172b4d" }}>
             {title}
           </h2>
@@ -100,7 +117,7 @@ export default function SidePanel({
         </div>
 
         {/* Scrollable body */}
-        <div style={{ flex: 1, overflowY: "auto", paddingRight: 16 }}>{children}</div>
+        <div style={{ flex: 1, overflowY: "auto", paddingRight: 0 }}>{children}</div>
 
         {/* Footer */}
         <div
@@ -111,7 +128,6 @@ export default function SidePanel({
             alignItems: "center",
             borderTop: "1px solid #e4e6ea",
             paddingTop: 12,
-            paddingRight: 16,
             marginTop: 12,
           }}
         >
@@ -132,6 +148,6 @@ export default function SidePanel({
           )}
         </div>
       </div>
-    </Drawer>
+    </>
   );
 }

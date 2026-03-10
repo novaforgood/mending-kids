@@ -21,11 +21,21 @@ export type MissionPayload = {
 export async function fetchMissions() {
   const { data, error } = await supabaseServer
     .from("missions")
-    .select("id, mission_name, start_date, end_date, location, category, status, created_at, mission_inventory(count), mission_members(count)")
+    .select("id, mission_name, start_date, end_date, location, category, status, created_at, mission_inventory(count)")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return data ?? [];
+
+  const { data: memberCounts } = await supabaseServer
+    .from("mission_members")
+    .select("mission_id");
+
+  const countMap: Record<number, number> = {};
+  for (const row of memberCounts ?? []) {
+    countMap[row.mission_id] = (countMap[row.mission_id] ?? 0) + 1;
+  }
+
+  return (data ?? []).map((m) => ({ ...m, memberCount: countMap[m.id] ?? 0 }));
 }
 
 export async function addMission(payload: any) {
