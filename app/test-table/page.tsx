@@ -49,7 +49,7 @@ export default function TestTablePage() {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="mx-auto max-w-4xl rounded-xl bg-white p-6 shadow">
-        <h1 className="mb-6 text-2xl font-bold">Test Table</h1>
+        <h1 className="mb-6 text-2xl font-bold text-black">Test Table</h1>
 
         {/* Form */}
         <div className="mb-6 flex gap-3">
@@ -77,7 +77,7 @@ export default function TestTablePage() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-gray-200 text-left">
+              <tr className="bg-gray-200 text-left text-black">
                 <th className="p-2">ID</th>
                 <th className="p-2">Created</th>
                 <th className="p-2">Product</th>
@@ -87,9 +87,9 @@ export default function TestTablePage() {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="border-t">
+                <tr key={row.id} className="border-t text-black">
                   <td className="p-2">{row.id}</td>
-                  <td className="p-2 text-sm text-gray-500">
+                  <td className="p-2 text-sm text-black">
                     {new Date(row.created_at).toLocaleString()}
                   </td>
                   <td className="p-2">{row.product}</td>
@@ -110,7 +110,7 @@ export default function TestTablePage() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-gray-500">
+                  <td colSpan={5} className="p-4 text-center text-black">
                     No rows yet
                   </td>
                 </tr>

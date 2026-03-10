@@ -4,16 +4,16 @@ export type InventoryItem = {
   item_description: string;
   manufacturer: string;
   reference_number: string;
+  lot_number: string | null;
+  unit_of_measure: string | null;
+  typical_shelf_life: string | null;
+  location: string | null;
   quantity: number;
   status: string;
   mission: string;
   expiration: Date;
   market_value_per_unit: number;
   total_value: number;
-  lot_number: string;
-  unit_of_measure: {
-    label: string;
-    value: string;
-  };
-  location: string;
+  valuation_source: string | null;
+  acquisition_method: string | null;
 };

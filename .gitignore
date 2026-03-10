@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/__tests__
+/jest.config.ts
+/jest.setup.ts
 
 # next.js
 /.next/
@@ -23,6 +26,7 @@
 # misc
 .DS_Store
 *.pem
+.claude
 
 # debug
 npm-debug.log*
@@ -40,3 +44,6 @@ env.local
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+#package lock
+package-lock.json
