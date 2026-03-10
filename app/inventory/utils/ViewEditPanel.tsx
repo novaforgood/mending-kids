@@ -1,33 +1,34 @@
 "use client";
 
 import React from "react";
-import Drawer from "@atlaskit/drawer";
-import Button from "@atlaskit/button/new";
-import Tabs, { Tab, TabList, TabPanel } from "@atlaskit/tabs";
 import Lozenge from "@atlaskit/lozenge";
 import SectionMessage from "@atlaskit/section-message";
 import DynamicTable from "@atlaskit/dynamic-table";
 import Tag from "@atlaskit/tag";
 import PageHeader from "@atlaskit/page-header";
 import Breadcrumbs, { BreadcrumbsItem } from "@atlaskit/breadcrumbs";
+import Button from "@atlaskit/button/new";
 
 import { InventoryItem } from "../types";
+import { SidePanel } from "./SidePanel";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   item: InventoryItem | null;
   mode: "view" | "edit";
-  setItems: React.Dispatch<React.SetStateAction<InventoryItem[]>>;
+  setItems?: React.Dispatch<React.SetStateAction<InventoryItem[]>>;
 }
 
 interface State {
   isEditing: boolean;
+  selectedTab: "Overview" | "Activity" | "Documentation" | "Details";
 }
 
 export default class ViewEditPanel extends React.Component<Props, State> {
   state: State = {
     isEditing: false,
+    selectedTab: "Overview",
   };
 
   componentDidUpdate(prevProps: Props) {
@@ -87,7 +88,6 @@ export default class ViewEditPanel extends React.Component<Props, State> {
         </div>
 
         <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
-          {/* <Button iconBefore={<AddIcon label="Add" />} appearance="discovery">Add Items</Button> */}
           <Button appearance="danger">Assign to Mission</Button>
           <Button appearance="subtle">Adjust Inventory</Button>
         </div>
@@ -105,7 +105,9 @@ export default class ViewEditPanel extends React.Component<Props, State> {
   }
 
   render() {
-    const { isOpen, onClose, item } = this.props;
+    const { isOpen, onClose, item, mode } = this.props;
+    const { selectedTab } = this.state;
+
     if (!item) return null;
 
     const headerBreadcrumbs = (
@@ -116,41 +118,61 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     );
 
     return (
-      <Drawer isOpen={isOpen} onClose={onClose} width="wide" label="Inventory Item">
-        <div style={{ padding: 24 }}>
-          <div style={{ marginTop: 8, marginBottom: 16 }}>
-            <Lozenge appearance="inprogress" isBold>IN STORAGE</Lozenge>{" "}
-            {this.renderExpirationLozenge(item.expiration)}
-          </div>
-
-          <div style={{ marginBottom: 16, display: "flex" }}>
-            <PageHeader breadcrumbs={headerBreadcrumbs}>{item.item_description}</PageHeader>
-          </div>
-
-          <Tabs id="view-edit-tabs">
-            <TabList>
-              <Tab>Overview</Tab>
-              <Tab>Activity</Tab>
-              <Tab>Documentation</Tab>
-              <Tab>Details</Tab>
-            </TabList>
-
-            <TabPanel>{this.renderOverview()}</TabPanel>
-            <TabPanel><div style={{ marginTop: 24 }}>Activity history will go here.</div></TabPanel>
-            <TabPanel><div style={{ marginTop: 24 }}>Documentation files will go here.</div></TabPanel>
-            <TabPanel><div style={{ marginTop: 24 }}>Additional metadata fields go here.</div></TabPanel>
-          </Tabs>
-
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <SidePanel
+        isOpen={isOpen}
+        onClose={onClose}
+        title={
+          <div style={{ marginTop: 16 }}>
             <div>
-              <Button appearance="subtle" onClick={onClose}>Cancel</Button>{" "}
+              <Lozenge appearance="inprogress">IN STORAGE</Lozenge>{" "}
+              {this.renderExpirationLozenge(item.expiration)}
+            </div>
+          </div>
+        }
+        footer={
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button appearance="subtle" onClick={onClose}>Close</Button>
+            {mode === "edit" && (
               <Button appearance="primary" onClick={() => this.setState({ isEditing: !this.state.isEditing })}>
                 {this.state.isEditing ? "Save Changes" : "Edit Item"}
               </Button>
-            </div>
+            )}
+          </div>
+        }
+      >
+        <div style={{ marginBottom: 16, display: "flex" }}>
+          <PageHeader breadcrumbs={headerBreadcrumbs}>{item.item_description}</PageHeader>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", borderBottom: "1px solid #DFE1E6", gap: 16 }}>
+            {["Overview", "Activity", "Documentation", "Details"].map((tab) => (
+              <div
+                key={tab}
+                onClick={() => this.setState({ selectedTab: tab as State["selectedTab"] })}
+                style={{
+                  padding: "8px 0",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  borderBottom: selectedTab === tab ? "2px solid #0052CC" : "none",
+                  color: selectedTab === tab ? "#0052CC" : "#172B4D",
+                }}
+              >
+                {tab}
+              </div>
+            ))}
           </div>
         </div>
-      </Drawer>
+
+        {/* Tab Content */}
+        <div style={{ marginTop: 16 }}>
+          {selectedTab === "Overview" && this.renderOverview()}
+          {selectedTab === "Activity" && <div style={{ marginTop: 24 }}>Activity history will go here.</div>}
+          {selectedTab === "Documentation" && <div style={{ marginTop: 24 }}>Documentation files will go here.</div>}
+          {selectedTab === "Details" && <div style={{ marginTop: 24 }}>Additional metadata fields go here.</div>}
+        </div>
+      </SidePanel>
     );
   }
 }
