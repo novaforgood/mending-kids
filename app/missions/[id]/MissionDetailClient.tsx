@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import AddMemberPanel from "./AddMemberPanel";
-import AddItemPanel from "./AddItemPanel";
 import EditMissionPanel from "./EditMissionPanel";
 
 type InventoryItem = {
@@ -303,7 +302,6 @@ type Tab = "items" | "people" | "documentation";
 
 export default function MissionDetailClient({ mission, items, members }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("items");
-  const [addItemOpen, setAddItemOpen] = useState(false);
   const [editMissionOpen, setEditMissionOpen] = useState(false);
 
   const dateRange = formatDateRange(mission.start_date, mission.end_date);
@@ -315,12 +313,6 @@ export default function MissionDetailClient({ mission, items, members }: Props) 
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <AddItemPanel
-        isOpen={addItemOpen}
-        missionId={mission.id}
-        onClose={() => setAddItemOpen(false)}
-        onAdded={() => window.location.reload()}
-      />
       <EditMissionPanel
         isOpen={editMissionOpen}
         missionId={mission.id}
@@ -338,12 +330,12 @@ export default function MissionDetailClient({ mission, items, members }: Props) 
             ← Back to Missions
           </Link>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setAddItemOpen(true)}
+            <Link
+              href={`/missions/${mission.id}/add-items`}
               className="flex items-center gap-1 rounded bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800"
             >
               + Add Item
-            </button>
+            </Link>
             <button
               onClick={() => setEditMissionOpen(true)}
               className="rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"

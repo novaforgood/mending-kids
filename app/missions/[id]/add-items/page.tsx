@@ -4,9 +4,10 @@ import AddItemsClient from "./AddItemsClient";
 export default async function AddItemsPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const missionId = Number(params.id);
+  const { id } = await params;
+  const missionId = Number(id);
   const inventory = await fetchInventory();
   return <AddItemsClient missionId={missionId} inventory={inventory} />;
 }
