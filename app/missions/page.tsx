@@ -14,8 +14,8 @@ type Mission = {
   location: string | null;
   category: string | null;
   status: string | null;
-  team_members: string | null;
   mission_inventory: { count: number }[];
+  mission_members: { count: number }[];
 };
 
 const BADGE: Record<string, { bg: string; text: string }> = {
@@ -41,9 +41,7 @@ function MissionCard({ mission, onClick }: { mission: Mission; onClick: () => vo
   const badge = mission.category ? (BADGE[mission.category] ?? BADGE.Other) : null;
 
   const itemCount = mission.mission_inventory?.[0]?.count ?? 0;
-  const memberCount = mission.team_members
-    ? mission.team_members.split(",").map((s) => s.trim()).filter(Boolean).length
-    : 0;
+  const memberCount = mission.mission_members?.[0]?.count ?? 0;
 
   return (
     <div

@@ -21,7 +21,7 @@ export type MissionPayload = {
 export async function fetchMissions() {
   const { data, error } = await supabaseServer
     .from("missions")
-    .select("id, mission_name, start_date, end_date, location, category, status, created_at, team_members, mission_inventory(count)")
+    .select("id, mission_name, start_date, end_date, location, category, status, created_at, mission_inventory(count), mission_members(count)")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
