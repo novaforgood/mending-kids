@@ -16,6 +16,8 @@ import AddItemPanel from "./utils/add-item-panel";
 import { InventoryItem } from "./types";
 import ViewEditPanel from "./utils/ViewEditPanel";
 
+import Lozenge from "@atlaskit/lozenge";
+
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +28,6 @@ export default function InventoryPage() {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("ASC");
 
-  const [isDocumentationModalOpen, setIsDocumentationModalOpen] = useState(false);
   const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
 
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -96,7 +97,13 @@ export default function InventoryPage() {
       { content: item.manufacturer },
       { content: item.reference_number },
       { content: item.quantity },
-      { content: item.status },
+      {
+        content: item.status ? (
+          <Lozenge>{item.status}</Lozenge>
+        ) : (
+          ""
+        ),
+      },
       { content: item.mission },
       { content: item.expiration.toLocaleDateString() },
       { content: `$${item.market_value_per_unit.toFixed(2)}` },
