@@ -6,6 +6,10 @@ First, install dependencies
 ```bash
 npm install
 ```
+To resolve peer dependency conflicts with Atlaskit packages, run
+```bash
+npm install --legacy-peer-deps
+```
 
 Then, run the development server:
 
