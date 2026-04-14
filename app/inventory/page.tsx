@@ -16,8 +16,6 @@ import AddItemPanel from "./utils/add-item-panel";
 import { InventoryItem } from "./types";
 import ViewEditPanel from "./utils/ViewEditPanel";
 
-import Lozenge from "@atlaskit/lozenge";
-
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -29,9 +27,10 @@ export default function InventoryPage() {
   const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("ASC");
 
   const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
-
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [panelMode, setPanelMode] = useState<"view" | "edit">("view");
+
+  const [selectedTab, setSelectedTab] = useState<"active" | "archived">("active");
 
   useEffect(() => {
     loadInventory();
@@ -85,73 +84,106 @@ export default function InventoryPage() {
     if (!sortKey) return 0;
     const aVal = a[sortKey as keyof InventoryItem];
     const bVal = b[sortKey as keyof InventoryItem];
-    if (typeof aVal === "number" && typeof bVal === "number") return sortOrder === "ASC" ? aVal - bVal : bVal - aVal;
-    if (aVal instanceof Date && bVal instanceof Date) return sortOrder === "ASC" ? aVal.getTime() - bVal.getTime() : bVal.getTime() - aVal.getTime();
-    return sortOrder === "ASC" ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal));
+
+    if (typeof aVal === "number" && typeof bVal === "number") {
+      return sortOrder === "ASC" ? aVal - bVal : bVal - aVal;
+    }
+
+    if (aVal instanceof Date && bVal instanceof Date) {
+      return sortOrder === "ASC"
+        ? aVal.getTime() - bVal.getTime()
+        : bVal.getTime() - aVal.getTime();
+    }
+
+    return sortOrder === "ASC"
+      ? String(aVal).localeCompare(String(bVal))
+      : String(bVal).localeCompare(String(aVal));
   });
 
-  const rows = sortedItems.map((item) => ({
-    key: String(item.id),
-    cells: [
-      { content: item.item_description },
-      { content: item.manufacturer },
-      { content: item.reference_number },
-      { content: item.quantity },
-      {
-        content: item.status ? (
-          <Lozenge>{item.status}</Lozenge>
-        ) : (
-          ""
-        ),
-      },
-      { content: item.mission },
-      { content: item.expiration.toLocaleDateString() },
-      { content: `$${item.market_value_per_unit.toFixed(2)}` },
-      { content: `$${item.total_value.toFixed(2)}` },
-      {
-        content: item.valuation_source ? (
-          <a href={item.valuation_source} target="_blank" rel="noreferrer" style={{ color: "#0052CC", fontSize: 13 }}>
-            {item.valuation_source}
-          </a>
-        ) : (
-          <span style={{ color: "#6B778C" }}>—</span>
-        ),
-      },
-      { content: item.acquisition_method ?? <span style={{ color: "#6B778C" }}>—</span> },
-      {
-        content: (
-          <div style={{ display: "flex", gap: 8 }}>
-            <IconButton icon={AddIcon} label="Add" onClick={() => console.log("Add item?", item.id)} />
-            <IconButton
-              icon={EditIcon}
-              label="Edit"
-              onClick={() => {
-                setSelectedItem(item);
-                setPanelMode("view");
-                setIsViewPanelOpen(true);
-              }}
-            />
-            <IconButton icon={MoreIcon} label="More" onClick={() => console.log("More options for item", item.id)} />
-          </div>
-        ),
-      },
-    ],
-  }));
+  const activeItems = sortedItems.filter((item) => item.status !== "archived");
+  const archivedItems = sortedItems.filter((item) => item.status === "archived");
+
+  const createRows = (data: InventoryItem[]) =>
+    data.map((item) => ({
+      key: String(item.id),
+      cells: [
+        { content: item.item_description },
+        { content: item.manufacturer },
+        { content: item.reference_number },
+        { content: item.quantity },
+        { content: item.status },
+        { content: item.mission },
+        { content: item.expiration.toLocaleDateString() },
+        { content: `$${item.market_value_per_unit.toFixed(2)}` },
+        { content: `$${item.total_value.toFixed(2)}` },
+        {
+          content: item.valuation_source ? (
+            <a href={item.valuation_source} target="_blank" rel="noreferrer">
+              {item.valuation_source}
+            </a>
+          ) : (
+            "—"
+          ),
+        },
+        { content: item.acquisition_method ?? "—" },
+        {
+          content: (
+            <div style={{ display: "flex", gap: 8 }}>
+              <IconButton icon={AddIcon} label="Add" />
+              <IconButton
+                icon={EditIcon}
+                label="Edit"
+                onClick={() => {
+                  setSelectedItem(item);
+                  setPanelMode("view");
+                  setIsViewPanelOpen(true);
+                }}
+              />
+              <IconButton icon={MoreIcon} label="More" />
+            </div>
+          ),
+        },
+      ],
+    }));
 
   return (
     <div style={{ padding: 32 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0 }}>Inventory</h1>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 600 }}>Inventory</h1>
         <Button appearance="primary" iconBefore={AddIcon} onClick={() => setIsPanelOpen(true)}>
           Add Item
         </Button>
       </div>
 
-      {error && <div style={{ color: "#DE350B", marginBottom: 12 }}>{error}</div>}
+      {/* Tabs for different table views*/}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", borderBottom: "1px solid #DFE1E6", gap: 16 }}>
+          {["active", "archived"].map((tab) => (
+            <div
+              key={tab}
+              onClick={() => setSelectedTab(tab as "active" | "archived")}
+              style={{
+                padding: "8px 0",
+                cursor: "pointer",
+                fontWeight: 600,
+                borderBottom: selectedTab === tab ? "2px solid #0052CC" : "none",
+                color: selectedTab === tab ? "#0052CC" : "#172B4D",
+                textTransform: "capitalize",
+              }}
+            >
+              {tab}
+            </div>
+          ))}
+        </div>
+      </div>
 
+      {error && <div style={{ color: "#DE350B" }}>{error}</div>}
+
+      {/* Conditional table */}
       <DynamicTable
         head={head}
-        rows={rows}
+        rows={createRows(selectedTab === "active" ? activeItems : archivedItems)}
         sortKey={sortKey ?? undefined}
         sortOrder={sortOrder}
         onSort={({ key, sortOrder }) => {
@@ -160,10 +192,13 @@ export default function InventoryPage() {
         }}
         rowsPerPage={10}
         defaultPage={1}
-        emptyView={<div style={{ padding: 16, textAlign: "center", color: "#6B778C" }}>No inventory items yet</div>}
+        emptyView={
+          <div style={{ padding: 16, textAlign: "center", color: "#6B778C" }}>
+            {selectedTab === "active" ? "No active items" : "No archived items"}
+          </div>
+        }
       />
 
-      {/* View / Edit Panel */}
       <ViewEditPanel
         isOpen={isViewPanelOpen}
         onClose={() => setIsViewPanelOpen(false)}
@@ -172,10 +207,13 @@ export default function InventoryPage() {
         setItems={setItems}
       />
 
-      {/* Add Item Panel */}
-      <AddItemPanel isOpen={isPanelOpen} onClose={() => setIsPanelOpen(false)} onSave={handlePanelSave} isSaving={isSaving} />
+      <AddItemPanel
+        isOpen={isPanelOpen}
+        onClose={() => setIsPanelOpen(false)}
+        onSave={handlePanelSave}
+        isSaving={isSaving}
+      />
 
-      {/* Documentation modal */}
       <DocumentationModal
         isOpen={false}
         preSelectedItemId={selectedItem?.id ?? null}

@@ -8,6 +8,7 @@ import Tag from "@atlaskit/tag";
 import PageHeader from "@atlaskit/page-header";
 import Breadcrumbs, { BreadcrumbsItem } from "@atlaskit/breadcrumbs";
 import Button from "@atlaskit/button/new";
+import { SwappedPageHeader } from "./swapped-page-header";
 
 import { InventoryItem } from "../types";
 import { SidePanel } from "./SidePanel";
@@ -77,7 +78,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     return (
       <div style={{ display: "flex", flexDirection: "column" }}>
         {expirationSoon && (
-          <div style={{ marginBottom: 16, marginTop: 24 }}>
+          <div style={{ marginBottom: 16, marginTop: 6 }}>
             <SectionMessage appearance="warning">Some inventory expires within 3 months</SectionMessage>
           </div>
         )}
@@ -122,9 +123,9 @@ export default class ViewEditPanel extends React.Component<Props, State> {
         isOpen={isOpen}
         onClose={onClose}
         title={
-          <div style={{ marginTop: 16 }}>
+          <div style={{ borderTop: "1px solid #DFE1E6" }}>
             <div>
-              <Lozenge appearance="inprogress">IN STORAGE</Lozenge>{" "}
+              <Lozenge>IN STORAGE</Lozenge>{" "}
               {this.renderExpirationLozenge(item.expiration)}
             </div>
           </div>
@@ -140,13 +141,19 @@ export default class ViewEditPanel extends React.Component<Props, State> {
           </div>
         }
       >
-        <div style={{ marginBottom: 16, display: "flex" }}>
-          <PageHeader breadcrumbs={headerBreadcrumbs}>{item.item_description}</PageHeader>
-        </div>
-
+        <SwappedPageHeader
+          title={item.item_description}
+          breadcrumbs={
+            <Breadcrumbs>
+              <BreadcrumbsItem text={item.reference_number} />
+              <BreadcrumbsItem text={item.location} />
+            </Breadcrumbs>
+          }
+        />
         {/* Tabs */}
-        <div style={{ marginBottom: 16 }}>
+        <div>
           <div style={{ display: "flex", borderBottom: "1px solid #DFE1E6", gap: 16 }}>
+            
             {["Overview", "Activity", "Documentation", "Details"].map((tab) => (
               <div
                 key={tab}
