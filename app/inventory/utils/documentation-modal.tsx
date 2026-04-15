@@ -5,6 +5,7 @@ import Button from "@atlaskit/button/new";
 import Textfield from "@atlaskit/textfield";
 import CameraIcon from "@atlaskit/icon/core/camera";
 import LinkIcon from "@atlaskit/icon/core/link";
+import ValuationSuggestedSources from "./ValuationSuggestedSources";
 
 type ItemOption = {
   id: number;
@@ -71,10 +72,8 @@ export default function DocumentationModal({
     prefillFromItem(id);
   }
 
-  const aiSuggestedSources = [
-    "https://www.amazon.com/JorVet-Veterinary-Grad...",
-    "https://www.abbott.com/en-us/products-solution...",
-  ];
+  const suggestionSearchQuery =
+    selectedItemId === "" ? "" : (items.find((i) => i.id === selectedItemId)?.label ?? "");
 
   // Filled state: when a valuation source has been selected
   const isFilled = valuationSource.trim() !== "";
@@ -175,7 +174,7 @@ export default function DocumentationModal({
               }
             }}
           >
-            Next
+            Submit
           </Button>
         </div>
 
@@ -304,60 +303,12 @@ export default function DocumentationModal({
             </div>
           </div>
 
-          {/* AI Suggested Sources — hidden when a source is selected */}
-          {!isFilled && (
-            <div style={{ marginBottom: 20 }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: 8,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  color: "#172B4D",
-                }}
-              >
-                AI Suggested Sources
-              </label>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {aiSuggestedSources.map((source, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setValuationSource(source)}
-                    style={{
-                      background: "#F4F5F7",
-                      border: "none",
-                      textAlign: "left",
-                      padding: "8px 12px",
-                      cursor: "pointer",
-                      color: "#0052CC",
-                      fontSize: 13,
-                      borderRadius: 4,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#DEEBFF";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "#F4F5F7";
-                    }}
-                  >
-                    <span style={{ fontSize: 14 }}>🌐</span>
-                    <span
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {source}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          <ValuationSuggestedSources
+            searchQuery={suggestionSearchQuery}
+            valuationSource={valuationSource}
+            onValuationSourceChange={setValuationSource}
+            sectionLabel="AI Suggested Sources"
+          />
 
           {/* Acquisition Method */}
           <div
