@@ -2,7 +2,16 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+First, install dependencies
+```bash
+npm install
+```
+To resolve peer dependency conflicts with Atlaskit packages, run
+```bash
+npm install --legacy-peer-deps
+```
+
+Then, run the development server:
 
 ```bash
 npm run dev
