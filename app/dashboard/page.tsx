@@ -8,9 +8,11 @@ import { fetchActivityLog, fetchMissions } from "./actions";
 type Row = {
   id: number;
   manufacturer: string;
+  item_description: string | null;
   reference_number: string;
   quantity: number;
-  unit: string;
+  unit: string | null;
+  unit_of_measure: string | null;
   alert_threshold: number | null;
   expiration_date: string | null;
 };
@@ -147,7 +149,7 @@ export default function DashboardPage() {
     .sort((a, b) => {
       const statusDiff = getInventoryStatus(a).priority - getInventoryStatus(b).priority;
       if (statusDiff !== 0) return statusDiff;
-      return a.reference_number.localeCompare(b.reference_number);
+      return (a.reference_number ?? "").localeCompare(b.reference_number ?? "");
     })
     .slice(0, 6);
 
@@ -667,7 +669,7 @@ export default function DashboardPage() {
                 const status = getInventoryStatus(item);
                 return (
                   <div key={item.id} className="flex justify-between items-center text-sm">
-                    <span className="text-black">{item.reference_number}</span>
+                    <span className="text-black">{item.item_description || item.reference_number || "Unknown item"}</span>
                     <div className="flex items-center gap-2">
                       <span className={`${status.badgeClass} text-xs px-2 py-1 rounded`}>{status.label}</span>
                       <span className="text-gray-600">

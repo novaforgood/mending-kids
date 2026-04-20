@@ -7,9 +7,11 @@ import { fetchAlertItems } from "../alerts/actions";
 type InventoryRow = {
   id: number;
   manufacturer: string;
+  item_description: string | null;
   reference_number: string;
   quantity: number;
-  unit: string;
+  unit: string | null;
+  unit_of_measure: string | null;
   alert_threshold: number | null;
   expiration_date: string | null;
 };
@@ -57,7 +59,7 @@ export default function InventoryStatusPage() {
   const orderedRows = [...rows].sort((a, b) => {
     const statusDiff = getInventoryStatus(a).priority - getInventoryStatus(b).priority;
     if (statusDiff !== 0) return statusDiff;
-    return a.reference_number.localeCompare(b.reference_number);
+    return (a.reference_number ?? "").localeCompare(b.reference_number ?? "");
   });
 
   return (
@@ -78,6 +80,7 @@ export default function InventoryStatusPage() {
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr className="text-left">
+                  <th className="px-4 py-3 font-medium text-gray-700">Item</th>
                   <th className="px-4 py-3 font-medium text-gray-700">Manufacturer</th>
                   <th className="px-4 py-3 font-medium text-gray-700">Reference</th>
                   <th className="px-4 py-3 font-medium text-gray-700">Quantity</th>
@@ -91,10 +94,11 @@ export default function InventoryStatusPage() {
                   const status = getInventoryStatus(row);
                   return (
                     <tr key={row.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap">{row.item_description ?? "-"}</td>
                       <td className="px-4 py-3 whitespace-nowrap">{row.manufacturer}</td>
                       <td className="px-4 py-3 whitespace-nowrap">{row.reference_number}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        {row.quantity} {row.unit}
+                        {row.quantity} {row.unit ?? row.unit_of_measure ?? ""}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">{row.alert_threshold ?? "-"}</td>
                       <td className="px-4 py-3 whitespace-nowrap">{formatDate(row.expiration_date)}</td>
@@ -107,7 +111,7 @@ export default function InventoryStatusPage() {
 
                 {orderedRows.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                       No inventory items found
                     </td>
                   </tr>

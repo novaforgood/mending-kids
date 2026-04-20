@@ -4,7 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export async function fetchAlertItems() {
   const { data, error } = await supabaseServer
-    .from("test_table")
+    .from("inventory")
     .select("*");
 
   if (error) throw new Error(error.message);
