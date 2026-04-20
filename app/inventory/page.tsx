@@ -15,10 +15,12 @@ import AddItemPanel from "./utils/add-item-panel";
 
 import { InventoryItem } from "./types";
 import ViewEditPanel from "./utils/ViewEditPanel";
+import { supabase } from "@/lib/supabase/supabaseClient";
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string>("anonymous");
 
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -34,7 +36,15 @@ export default function InventoryPage() {
 
   useEffect(() => {
     loadInventory();
+    getUser();
   }, []);
+
+  async function getUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      setUserEmail(user.email);
+    }
+  }
 
   async function loadInventory() {
     try {
@@ -53,7 +63,7 @@ export default function InventoryPage() {
     setIsSaving(true);
     setError(null);
     try {
-      await addItem(payload);
+      await addItem(payload, userEmail);
       await loadInventory();
       setIsPanelOpen(false);
     } catch {
@@ -100,8 +110,16 @@ export default function InventoryPage() {
       : String(bVal).localeCompare(String(aVal));
   });
 
-  const activeItems = sortedItems.filter((item) => item.status !== "archived");
-  const archivedItems = sortedItems.filter((item) => item.status === "archived");
+  const activeItems = sortedItems.filter((item) => {
+    if (item.status === "archived") return false;
+    if (item.expiration && item.expiration < new Date()) return false;
+    return true;
+  });
+  const archivedItems = sortedItems.filter((item) => {
+    if (item.status === "archived") return true;
+    if (item.expiration && item.expiration < new Date()) return true;
+    return false;
+  });
 
   const createRows = (data: InventoryItem[]) =>
     data.map((item) => ({
@@ -226,7 +244,7 @@ export default function InventoryPage() {
         }))}
         onClose={() => {}}
         onNext={async (itemId, marketValue, valuationSource, acquisitionMethod) => {
-          await updateItemDocumentation(itemId, marketValue, valuationSource, acquisitionMethod);
+          await updateItemDocumentation(itemId, marketValue, valuationSource, acquisitionMethod, userEmail);
           await loadInventory();
         }}
       />
