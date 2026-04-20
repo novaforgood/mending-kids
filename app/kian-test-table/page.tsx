@@ -20,22 +20,36 @@ export default function KianTestTablePage() {
   const [expirationDate, setExpirationDate] = useState<string>("");
   const [editingId, setEditingId] = useState<number | null>(null);
 
+  function sortByThresholdRatio(data: Row[]): Row[] {
+    return [...data].sort((a, b) => {
+      const ratioA = a.alert_threshold ? a.quantity / a.alert_threshold : Infinity;
+      const ratioB = b.alert_threshold ? b.quantity / b.alert_threshold : Infinity;
+      return ratioA - ratioB;
+    });
+  }
+
   async function loadRows() {
     try {
       const data = await fetchRows();
-      data.sort((a: Row, b: Row) => {
-        const ratioA = a.alert_threshold ? a.quantity / a.alert_threshold : Infinity;
-        const ratioB = b.alert_threshold ? b.quantity / b.alert_threshold : Infinity;
-        return ratioA - ratioB;
-      });
-      setRows(data);
+      setRows(sortByThresholdRatio(data));
     } catch (err) {
       console.error(err);
     }
   }
 
   useEffect(() => {
-    loadRows();
+    let active = true;
+    fetchRows()
+      .then((data) => {
+        if (!active) return;
+        setRows(sortByThresholdRatio(data));
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function handleSubmit() {
@@ -69,7 +83,7 @@ export default function KianTestTablePage() {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="mx-auto max-w-4xl rounded-xl bg-white p-6 shadow">
-        <h1 className="mb-6 text-2xl font-bold text-gray-900">Kian's Table Editor</h1>
+        <h1 className="mb-6 text-2xl font-bold text-gray-900">Kian&apos;s Table Editor</h1>
 
         {/* Form */}
         <div className="mb-6 flex items-end gap-3">

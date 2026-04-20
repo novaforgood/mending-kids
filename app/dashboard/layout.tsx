@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import DashboardShell from "./DashboardShell";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
-  description: "Dashboard overview",
+  title: "Missions | Mending Kids",
+  description: "Inventory Management System",
 };
 
-export default function DashboardLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return children;
+export default function DashboardLayout({ children }: { children: ReactNode }) {
+  return <DashboardShell>{children}</DashboardShell>;
 }

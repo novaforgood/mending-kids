@@ -26,7 +26,18 @@ export default function TestTablePage() {
   }
 
   useEffect(() => {
-    loadRows();
+    let active = true;
+    fetchRows()
+      .then((data) => {
+        if (!active) return;
+        setRows(data);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function handleSubmit() {
