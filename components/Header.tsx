@@ -79,7 +79,7 @@ export default function Header() {
                     type="button"
                     onClick={() => {
                       setIsSidebarOpen(false)
-                      router.push("/alerts")
+                      router.push("/dashboard")
                     }}
                     className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-gray-100"
                   >

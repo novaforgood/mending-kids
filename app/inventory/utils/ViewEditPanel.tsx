@@ -71,7 +71,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
       { key: "manufacturer", cells: [{ key: "f", content: "Manufacturer" }, { key: "v", content: item.manufacturer }] },
       { key: "reference", cells: [{ key: "f", content: "Reference Number" }, { key: "v", content: item.reference_number }] },
       { key: "lot", cells: [{ key: "f", content: "Lot Number" }, { key: "v", content: item.lot_number }] },
-      { key: "unit", cells: [{ key: "f", content: "Unit of Measure" }, { key: "v", content: item.unit_of_measure?.label }] },
+      { key: "unit", cells: [{ key: "f", content: "Unit of Measure" }, { key: "v", content: item.unit_of_measure }] },
     ];
 
     return (
@@ -113,7 +113,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     const headerBreadcrumbs = (
       <Breadcrumbs>
         <BreadcrumbsItem text={item.reference_number} />
-        <BreadcrumbsItem text={item.location} />
+        <BreadcrumbsItem text={item.location ?? ""} />
       </Breadcrumbs>
     );
 
