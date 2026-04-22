@@ -113,6 +113,10 @@ export default function MissionsPage() {
   const router = useRouter();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"current" | "archive">("current");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   async function loadMissions() {
     try {
@@ -127,6 +131,50 @@ export default function MissionsPage() {
     loadMissions();
   }, []);
 
+  const today = new Date().toISOString().split("T")[0];
+
+  const tabFiltered = missions.filter((m) =>
+    activeTab === "archive"
+      ? m.end_date && m.end_date < today
+      : !m.end_date || m.end_date >= today
+  );
+
+  const displayed = tabFiltered.filter((m) => {
+    if (selectedCategory && m.category !== selectedCategory) return false;
+    if (selectedLocation && m.location !== selectedLocation) return false;
+    if (searchQuery && !m.mission_name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
+
+  const categories = [...new Set(missions.map((m) => m.category).filter(Boolean))] as string[];
+  const locations = [...new Set(missions.map((m) => m.location).filter(Boolean))] as string[];
+
+  function switchTab(tab: "current" | "archive") {
+    setActiveTab(tab);
+    setSelectedCategory("");
+    setSelectedLocation("");
+    setSearchQuery("");
+  }
+
+  const emptyMessage =
+    activeTab === "archive"
+      ? "No archived missions."
+      : missions.length === 0
+      ? "No missions yet. Create your first one!"
+      : "No missions match the selected filters.";
+
+  const selectStyle: React.CSSProperties = {
+    appearance: "none",
+    WebkitAppearance: "none",
+    border: "1px solid #D0D5DD",
+    borderRadius: 6,
+    padding: "6px 28px 6px 10px",
+    fontSize: 13,
+    color: "#374151",
+    background: `#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 8px center`,
+    cursor: "pointer",
+  };
+
   return (
     <div className="min-h-screen bg-white p-8">
       <AddMissionPanel
@@ -138,23 +186,102 @@ export default function MissionsPage() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-[#051524]">Missions</h1>
-        <button
-          onClick={() => setIsAddOpen(true)}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-          style={{ fontFamily: "'Atlassian Sans', sans-serif", fontSize: 14, lineHeight: "20px" }}
-        >
-          Create Mission
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsAddOpen(true)}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+            style={{ backgroundColor: "#1E1B4B", fontSize: 14, lineHeight: "20px" }}
+          >
+            Create Mission
+          </button>
+          <button
+            className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors text-lg leading-none"
+            title="More options"
+          >
+            ···
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-6 border-b border-gray-200 mb-5">
+        {(["current", "archive"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => switchTab(tab)}
+            className="pb-2 text-sm capitalize transition-colors"
+            style={{
+              borderBottom: activeTab === tab ? "2px solid #051524" : "2px solid transparent",
+              fontWeight: activeTab === tab ? 600 : 400,
+              color: activeTab === tab ? "#051524" : "#6B7280",
+              marginBottom: -1,
+            }}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {/* Filters + Search */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex gap-2">
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="">Specialty</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <select
+            value={selectedLocation}
+            onChange={(e) => setSelectedLocation(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="">Location</option>
+            {locations.map((l) => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="relative">
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search missions..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              border: "1px solid #7C3AED",
+              borderRadius: 6,
+              padding: "6px 12px 6px 32px",
+              fontSize: 13,
+              color: "#374151",
+              width: 220,
+              outline: "none",
+            }}
+          />
+        </div>
       </div>
 
       {/* Card grid */}
-      {missions.length === 0 ? (
-        <p className="text-center text-gray-400 mt-20">No missions yet. Create your first one!</p>
+      {displayed.length === 0 ? (
+        <p className="text-center text-gray-400 mt-20">{emptyMessage}</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {missions.map((mission) => (
+          {displayed.map((mission) => (
             <MissionCard
               key={mission.id}
               mission={mission}
