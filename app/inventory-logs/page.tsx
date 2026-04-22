@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchAllActivityLog } from "../dashboard/actions";
+import { DateFilter, DateFilterDropdown, isWithinDateFilter } from "./DateFilterDropdown";
 
 type InventoryLog = {
   id: number;
@@ -28,6 +29,8 @@ function formatDateTime(value: string): string {
 
 export default function InventoryLogsPage() {
   const [logs, setLogs] = useState<InventoryLog[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState<DateFilter>(null);
 
   useEffect(() => {
     async function loadLogs() {
@@ -38,9 +41,22 @@ export default function InventoryLogsPage() {
         console.error(error);
       }
     }
-
     loadLogs();
   }, []);
+
+  const filteredLogs = logs.filter((log) => {
+    if (!isWithinDateFilter(log.created_at, dateFilter)) return false;
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      log.action_type.toLowerCase().includes(q) ||
+      log.performed_by.toLowerCase().includes(q) ||
+      log.description.toLowerCase().includes(q) ||
+      (log.item_name ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  const hasFilters = !!searchQuery.trim() || !!dateFilter;
 
   return (
     <div className="min-h-screen bg-white p-8 text-black">
@@ -53,6 +69,29 @@ export default function InventoryLogsPage() {
           >
             Back to Dashboard
           </Link>
+        </div>
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="relative flex-1 max-w-sm">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search logs..."
+              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <DateFilterDropdown value={dateFilter} onChange={setDateFilter} />
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -69,7 +108,7 @@ export default function InventoryLogsPage() {
                 </tr>
               </thead>
               <tbody>
-                {logs.map((log) => (
+                {filteredLogs.map((log) => (
                   <tr key={log.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap">{formatDateTime(log.created_at)}</td>
                     <td className="px-4 py-3 whitespace-nowrap uppercase">{log.action_type}</td>
@@ -79,11 +118,10 @@ export default function InventoryLogsPage() {
                     <td className="px-4 py-3">{log.description}</td>
                   </tr>
                 ))}
-
-                {logs.length === 0 && (
+                {filteredLogs.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                      No inventory logs found
+                      {hasFilters ? "No logs match your filters" : "No inventory logs found"}
                     </td>
                   </tr>
                 )}
