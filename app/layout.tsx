@@ -27,6 +27,7 @@ return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
         <div className="flex min-h-screen">
           {/* Main content area */}

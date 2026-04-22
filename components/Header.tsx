@@ -48,7 +48,7 @@ export default function Header() {
         <div className="flex items-center gap-4">
           <button
             type="button"
-            onClick={() => router.push("/alerts")}
+            onClick={() => router.push("/inventory-logs")}
             className="w-5 h-5 text-gray-700 cursor-pointer flex items-center justify-center hover:text-gray-900"
           >
             <NotificationIcon label="Notifications" />
@@ -79,7 +79,7 @@ export default function Header() {
                     type="button"
                     onClick={() => {
                       setIsSidebarOpen(false)
-                      router.push("/alerts")
+                      router.push("/dashboard")
                     }}
                     className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-gray-100"
                   >
