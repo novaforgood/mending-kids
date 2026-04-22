@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/__tests__
+/jest.config.ts
+/jest.setup.ts
 
 # next.js
 /.next/
@@ -23,6 +26,7 @@
 # misc
 .DS_Store
 *.pem
+.claude
 
 # debug
 npm-debug.log*
@@ -32,6 +36,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+env.local
 
 # vercel
 .vercel
@@ -39,3 +44,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+#package lock
+package-lock.json
