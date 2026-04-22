@@ -16,19 +16,27 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(false);
 
   const handleLogin = async () => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
-    });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-    if (error) {
-      alert(error.message);
-      console.log(error);
-      return;
-    }
+  if (error) {
+    alert(error.message);
+    return;
+  }
 
-    console.log("Logged in!", data);
-  };
+  const role = data.user?.user_metadata?.role;
+
+  if (role === "admin") {
+    window.location.href = "/admin";
+  } else if (role === "intern") {
+    window.location.href = "/intern";
+  } else {
+    alert("No valid role found for this user.");
+    console.log("User metadata:", data.user?.user_metadata);
+  }
+};
 
   return (
     <div className={styles.page}>
