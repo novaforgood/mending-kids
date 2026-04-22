@@ -129,7 +129,7 @@ export default function AlertsPage() {
                 <span className="text-gray-900 font-medium">{item.product}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-gray-700 text-sm">{item.quantity}/{item.alert_threshold}</span>
-                  <Link href="/kian-test-table" className="text-gray-400 text-lg hover:text-gray-600">→</Link>
+                  <Link href="/inventory-status" className="text-gray-400 text-lg hover:text-gray-600">→</Link>
                 </div>
               </div>
               <div className="mt-2 h-3 bg-gray-300 rounded-full overflow-hidden">
@@ -155,7 +155,7 @@ export default function AlertsPage() {
                       {item.quantity} {item.product} {text} ({formatDate(item.expiration_date!)})
                     </span>
                   </div>
-                  <Link href="/kian-test-table" className="text-gray-400 text-lg hover:text-gray-600">→</Link>
+                  <Link href="/inventory-status" className="text-gray-400 text-lg hover:text-gray-600">→</Link>
                 </div>
               </div>
             );
