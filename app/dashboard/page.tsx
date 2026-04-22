@@ -417,7 +417,11 @@ export default function DashboardPage() {
                 const categoryColorClass = getStatusColorLight(mission.status);
 
                 return (
-                  <div key={mission.id} className="border border-gray-200 rounded p-4">
+                  <Link 
+                    href={`/missions/${mission.id}`} 
+                    key={mission.id} 
+                    className="border border-gray-200 rounded p-4 block hover:shadow-md transition-shadow cursor-pointer hover:bg-gray-50"
+                  >
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-medium">{mission.mission_name}</span>
                       <span className={`${missionBadgeClasses(mission.status)} text-xs px-2 py-1 rounded`}>
@@ -437,7 +441,7 @@ export default function DashboardPage() {
                       <span className="mr-1">{action.icon}</span>
                       <span>{action.text}</span>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
 
@@ -546,7 +550,7 @@ export default function DashboardPage() {
               <div className="flex gap-1">
                 <button
                   onClick={goToPreviousMonth}
-                  className="text-gray-600 hover:text-gray-800 px-1"
+                  className="text-gray-600 hover:text-gray-800 px-1 hover:cursor-pointer"
                   title="Previous month"
                 >
                   ‹
@@ -556,7 +560,7 @@ export default function DashboardPage() {
               <div className="flex gap-1">
                 <button
                   onClick={goToNextMonth}
-                  className="text-gray-600 hover:text-gray-800 px-1"
+                  className="text-gray-600 hover:text-gray-800 px-1 hover:cursor-pointer"
                   title="Next month"
                 >
                   ›
@@ -590,7 +594,7 @@ export default function DashboardPage() {
                           ? "text-gray-300"
                           : today
                           ? "bg-blue-500 text-white rounded font-semibold"
-                          : "hover:bg-gray-100 rounded cursor-pointer"
+                          : "rounded"
                       }`}
                       onMouseEnter={() => dayMissions.length > 0 && setHoveredDate(dateKey)}
                       onMouseLeave={() => setHoveredDate(null)}
@@ -615,9 +619,9 @@ export default function DashboardPage() {
                             {dayMissions.length} mission{dayMissions.length > 1 ? "s" : ""}
                           </div>
                           {dayMissions.map((mission) => (
-                            <div key={mission.id} className="text-gray-200">
+                            <Link key={mission.id} href={`/missions/${mission.id}`} className="block text-gray-200 hover:text-white hover:underline">
                               • {mission.mission_name}
-                            </div>
+                            </Link>
                           ))}
                           <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
                             <div className="border-4 border-transparent border-t-gray-900"></div>
