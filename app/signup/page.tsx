@@ -110,9 +110,7 @@ export default function SignupPage() {
             <select className={styles.select} value={role} onChange={(e) => setRole(e.target.value)}>
               <option value="">Select role</option>
               <option value="admin">Admin</option>
-              <option value="staff">Staff</option>
-              <option value="volunteer">Volunteer</option>
-              <option value="viewer">Viewer</option>
+              <option value="intern">Intern</option>
             </select>
 
             <button className={styles.button} type="button" onClick={handleSignup} disabled={loading}>
