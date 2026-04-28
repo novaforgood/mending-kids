@@ -6,12 +6,14 @@ import SectionMessage from "@atlaskit/section-message";
 import Tag from "@atlaskit/tag";
 import Breadcrumbs, { BreadcrumbsItem } from "@atlaskit/breadcrumbs";
 import Button from "@atlaskit/button/new";
-import { SwappedPageHeader } from "./swapped-page-header";
+import CustomButton from "./components/custom-button";
+import { SwappedPageHeader } from "./components/swapped-page-header";
 
-import ScrollablePaginatedTable from "./scrollable-table";
+import ScrollablePaginatedTable from "./components/scrollable-table";
 
-import { InventoryItem } from "../types";
-import { SidePanel } from "./SidePanel";
+import { InventoryItem } from "./utils/types";
+import { SidePanel } from "./components/SidePanel";
+import { fetchItemActivityLog } from "./actions";
 
 interface Props {
   isOpen: boolean;
@@ -44,11 +46,12 @@ export default class ViewEditPanel extends React.Component<Props, State> {
       prevProps.item !== this.props.item
     ) {
       this.setState({ isEditing: this.props.mode === "edit" });
+      this.loadActivity();
     }
   }
 
   // ---------------------------
-  // ACTIVITY PARSER
+  // ACTIVITY TAB LOGIC
   // ---------------------------
   parseActivityLog(log: string) {
     const activityMap: Record<string, string> = {
@@ -72,9 +75,9 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
         return {
           key: `${itemId}-${timestamp}`,
-          activity: activityMap[action],
-          status: itemName,
           reason: `${user} • Item ${itemId}`,
+          activity: activityMap[action],
+          user: user,
           timestamp,
         };
       })
@@ -82,10 +85,20 @@ export default class ViewEditPanel extends React.Component<Props, State> {
   }
 
   async loadActivity() {
+    const { item } = this.props;
+    if (!item) return;
+
     try {
-      const res = await fetch("/inventory-changes.txt");
-      const text = await res.text();
-      this.setState({ activity: this.parseActivityLog(text) });
+      const data = await fetchItemActivityLog(item.id);
+      const activity = data.map((entry: any) => ({
+        key: `${entry.id}-${entry.created_at}`,
+        activity: entry.action_type,
+        status: "",
+        reason: entry.description || "",
+        user: entry.performed_by || "",
+        timestamp: entry.created_at,
+      }));
+      this.setState({ activity });
     } catch {
       this.setState({ activity: [] });
     }
@@ -116,10 +129,10 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     const { item } = this.props;
     if (!item) return null;
 
-    const expirationSoon =
-      item.expiration &&
-      (item.expiration.getTime() - Date.now()) /
-        (1000 * 60 * 60 * 24) < 90;
+    const daysToExpiration = item.expiration
+      ? (item.expiration.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      : null;
+    const expirationSoon = daysToExpiration !== null && daysToExpiration > 0 && daysToExpiration < 90;
 
     return (
       <div style={{ display: "flex", flexDirection: "column" }}>
@@ -131,14 +144,15 @@ export default class ViewEditPanel extends React.Component<Props, State> {
           </div>
         )}
 
-        <div style={{ marginBottom: 24 }}>
-          <h4 style={{ marginBottom: 8 }}>Total Available</h4>
-          <Tag text="2000 UNITS" />
-        </div>
 
         <div style={{ marginBottom: 24, display: "flex", gap: 12 }}>
-          <Button appearance="danger">Assign to Mission</Button>
-          <Button appearance="subtle">Adjust Inventory</Button>
+          <CustomButton backgroundColor="#251343" textColor="#FFFFFF" hoverColor="#251343">Add Items</CustomButton>
+          <CustomButton backgroundColor="#A12654" textColor="#FFFFFF" hoverColor="#A12654">Assign to Mission</CustomButton>
+        </div>
+
+        <div style={{ marginBottom: 24 }}>
+          <h4 style={{ marginBottom: 8 }}>Total Available</h4>
+          <Tag text={`${item.quantity} ${(item.unit_of_measure || "UNITS").toUpperCase()}`} />
         </div>
 
         {/* Inventory Entries Table (NOW CUSTOM TABLE) */}
@@ -149,8 +163,8 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
           <ScrollablePaginatedTable
             columns={[
-              { key: "field", header: "Field", width: 200 },
-              { key: "value", header: "Value", width: 300 },
+              { key: "field", header: "Field", width: 100 },
+              { key: "value", header: "Value", width: 100 },
             ]}
             rows={[
               {
@@ -203,9 +217,9 @@ export default class ViewEditPanel extends React.Component<Props, State> {
         }
         footer={
           <div style={{ display: "flex", gap: 8 }}>
-            <Button appearance="subtle" onClick={onClose}>
+            <CustomButton backgroundColor="#EBECF0" textColor="#172B4D" hoverColor="#DFE1E6" onClick={onClose}>
               Close
-            </Button>
+            </CustomButton>
           </div>
         }
       >
@@ -262,7 +276,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
           {selectedTab === "Overview" &&
             this.renderOverview()}
 
-          {/* ACTIVITY TABLE (CUSTOM) */}
+          {/* ACTIVITY TABLE */}
           {selectedTab === "Activity" && (
             <div style={{ marginTop: 24 }}>
               <h4 style={{ marginBottom: 12 }}>
@@ -274,22 +288,27 @@ export default class ViewEditPanel extends React.Component<Props, State> {
                   {
                     key: "activity",
                     header: "Activity",
-                    width: 220,
+                    width: 100,
                   },
                   {
                     key: "status",
-                    header: "Item",
-                    width: 250,
+                    header: "Status",
+                    width: 50,
                   },
                   {
                     key: "reason",
-                    header: "Details",
-                    width: 300,
+                    header: "Reason",
+                    width: 100,
+                  },
+                  {
+                    key: "user",
+                    header: "User",
+                    width: 100,
                   },
                   {
                     key: "timestamp",
-                    header: "Timestamp",
-                    width: 250,
+                    header: "Date",
+                    width: 100,
                   },
                 ]}
                 rows={this.state.activity.map((a) => ({
@@ -298,7 +317,8 @@ export default class ViewEditPanel extends React.Component<Props, State> {
                     a.activity,
                     a.status,
                     a.reason,
-                    new Date(a.timestamp).toLocaleString(),
+                    a.user,
+                    new Date(a.timestamp).toLocaleDateString(),
                   ],
                 }))}
                 rowsPerPage={8}

@@ -50,18 +50,6 @@ async function logInventoryChange(
 }
 
 /* Fetch all inventory items */
-export async function fetchItemActivityLog(inventoryId: number) {
-  const { data, error } = await supabaseServer
-    .from("activity_log")
-    .select("*")
-    .eq("inventory_id", inventoryId)
-    .order("created_at", { ascending: false });
-
-  if (error) throw new Error(error.message);
-  return data;
-}
-
-/* Fetch all inventory items */
 export async function fetchInventory() {
   const { data, error } = await supabaseServer
     .from("inventory")

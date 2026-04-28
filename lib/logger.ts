@@ -1,9 +1,6 @@
-import fs from "fs";
-import path from "path";
+import { supabaseServer } from "@/lib/supabase/server";
 
-const LOG_FILE_PATH = path.join(process.cwd(), "inventory-changes.txt");
-
-export type ChangeType = "add" | "edit" | "delete";
+export type ChangeType = "added" | "edited" | "deleted";
 
 export type ChangeLogEntry = {
   timestamp: string;
@@ -14,34 +11,35 @@ export type ChangeLogEntry = {
   changes?: Record<string, { old: string; new: string }>;
 };
 
-export function logInventoryChange(
+export async function logInventoryChange(
   type: ChangeType,
   user: string,
   itemId?: number,
   itemDescription?: string,
   changes?: Record<string, { old: string; new: string }>
 ) {
-  const entry: ChangeLogEntry = {
-    timestamp: new Date().toISOString(),
-    type,
-    user,
-    itemId,
-    itemDescription,
-    changes,
-  };
-
-  let logLine = `[${entry.timestamp}] ${entry.type.toUpperCase()} by ${entry.user}`;
-  if (entry.itemId) logLine += ` | Item ID: ${entry.itemId}`;
-  if (entry.itemDescription) logLine += ` | ${entry.itemDescription}`;
-  
-  if (entry.changes) {
-    logLine += "\n  Changes:";
-    for (const [field, { old: oldVal, new: newVal }] of Object.entries(entry.changes)) {
-      logLine += `\n    - ${field}: "${oldVal}" → "${newVal}"`;
-    }
+  // Build description from changes if provided
+  let description = itemDescription || "";
+  if (changes) {
+    const changeDescriptions = Object.entries(changes).map(
+      ([field, { old: oldVal, new: newVal }]) => `${field}: "${oldVal}" → "${newVal}"`
+    );
+    description += changeDescriptions.length > 0 
+      ? ` (${changeDescriptions.join(", ")})`
+      : "";
   }
-  
-  logLine += "\n\n";
 
-  fs.appendFileSync(LOG_FILE_PATH, logLine);
+  const { error } = await supabaseServer
+    .from("activity_log")
+    .insert({
+      action_type: type,
+      performed_by: user,
+      description: description,
+      item_name: itemDescription,
+      inventory_id: itemId,
+    });
+
+  if (error) {
+    console.error("Failed to log inventory change:", error.message);
+  }
 }

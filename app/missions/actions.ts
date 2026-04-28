@@ -1,6 +1,7 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabase/server";
+import { updateItemQuantity } from "@/app/inventory/utils/actions";
 
 export type MissionPayload = {
   mission_name: string;
@@ -155,11 +156,7 @@ export async function addMissionItem(input: {
   if (fetchError) throw new Error(fetchError.message);
 
   const newQty = Math.max(0, (inv.quantity ?? 0) - input.quantity);
-  const { error: updateError } = await supabaseServer
-    .from("inventory")
-    .update({ quantity: newQty })
-    .eq("id", input.inventory_id);
-  if (updateError) throw new Error(updateError.message);
+  await updateItemQuantity(input.inventory_id, newQty, "system");
 }
 
 // ─── Mission Members ────────────────────────────────────────────────────────

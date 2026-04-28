@@ -9,12 +9,12 @@ import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from "@atlaskit/icon/core/show-more-horizontal";
 
-import { fetchInventory, addItem, updateItemDocumentation } from "./actions";
-import DocumentationModal from "./utils/documentation-modal";
-import AddItemPanel from "./utils/add-item-panel";
+import { fetchInventory, addItem, updateItemDocumentation } from "./utils/actions";
+import DocumentationModal from "./components/documentation-modal";
+import AddItemPanel from "./components/add-item-panel";
 
-import { InventoryItem } from "./types";
-import ViewEditPanel from "./utils/ViewEditPanel";
+import { InventoryItem } from "./utils/types";
+import ViewEditPanel from "./ViewEditPanel";
 import { supabase } from "@/lib/supabase/supabaseClient";
 
 export default function InventoryPage() {
