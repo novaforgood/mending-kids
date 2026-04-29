@@ -149,7 +149,7 @@ export async function addMissionItem(input: {
 
   const { data: inv, error: fetchError } = await supabaseServer
     .from("inventory")
-    .select("quantity")
+    .select("quantity, item_description")
     .eq("id", input.inventory_id)
     .single();
   if (fetchError) throw new Error(fetchError.message);
@@ -160,6 +160,16 @@ export async function addMissionItem(input: {
     .update({ quantity: newQty })
     .eq("id", input.inventory_id);
   if (updateError) throw new Error(updateError.message);
+
+  await supabaseServer.from("activity_log").insert({
+    action_type: "assigned",
+    performed_by: "system",
+    description: `Assigned ${input.quantity} unit(s) of "${inv.item_description}" to mission`,
+    item_name: inv.item_description,
+    quantity: input.quantity,
+    mission_id: input.mission_id,
+    inventory_id: input.inventory_id,
+  });
 }
 
 // ─── Mission Members ────────────────────────────────────────────────────────
@@ -217,16 +227,72 @@ export async function deleteMissionMember(id: number) {
 
 /** 6) Update quantity for an item on a mission */
 export async function updateMissionItem(id: number, quantity: number) {
+  const { data: mi, error: fetchError } = await supabaseServer
+    .from("mission_inventory")
+    .select("inventory_id, mission_id, quantity_used")
+    .eq("id", id)
+    .single();
+  if (fetchError) throw new Error(fetchError.message);
+
+  const { data: inv, error: invError } = await supabaseServer
+    .from("inventory")
+    .select("item_description")
+    .eq("id", mi.inventory_id)
+    .single();
+  if (invError) throw new Error(invError.message);
+
   const { error } = await supabaseServer
     .from("mission_inventory")
     .update({ quantity_used: quantity })
     .eq("id", id);
-
   if (error) throw new Error(error.message);
+
+  await supabaseServer.from("activity_log").insert({
+    action_type: "updated",
+    performed_by: "system",
+    description: `Updated quantity from ${mi.quantity_used} to ${quantity} for "${inv.item_description}" on mission`,
+    item_name: inv.item_description,
+    quantity: quantity,
+    mission_id: mi.mission_id,
+    inventory_id: mi.inventory_id,
+  });
 }
 
 /** 7) Remove an item from a mission */
 export async function deleteMissionItem(id: number) {
+  const { data: mi, error: fetchError } = await supabaseServer
+    .from("mission_inventory")
+    .select("inventory_id, mission_id, quantity_used")
+    .eq("id", id)
+    .single();
+  if (fetchError) throw new Error(fetchError.message);
+
+  const { data: inv, error: invError } = await supabaseServer
+    .from("inventory")
+    .select("item_description")
+    .eq("id", mi.inventory_id)
+    .single();
+  if (invError) throw new Error(invError.message);
+
   const { error } = await supabaseServer.from("mission_inventory").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+
+  await supabaseServer.from("activity_log").insert({
+    action_type: "removed",
+    performed_by: "system",
+    description: `Removed ${mi.quantity_used} unit(s) of "${inv.item_description}" from mission`,
+    item_name: inv.item_description,
+    quantity: mi.quantity_used,
+    mission_id: mi.mission_id,
+    inventory_id: mi.inventory_id,
+  });
+}
+
+/** Delete a mission entirely */
+export async function deleteMission(id: number) {
+  const { error } = await supabaseServer
+    .from("missions")
+    .delete()
+    .eq("id", id);
   if (error) throw new Error(error.message);
 }
