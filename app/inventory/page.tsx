@@ -73,20 +73,29 @@ export default function InventoryPage() {
     }
   }
 
+  // 🔹 Reusable cell wrapper to prevent stretching
+  const Cell = ({ children }: { children: React.ReactNode }) => (
+    <div
+      style={{
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+      }}
+    >
+      {children}
+    </div>
+  );
+
   const head = {
     cells: [
-      { key: "item_description", content: "Item Description", isSortable: true },
-      { key: "manufacturer", content: "Manufacturer", isSortable: true },
-      { key: "reference_number", content: "Reference Number", isSortable: true },
-      { key: "quantity", content: "Quantity", isSortable: true },
-      { key: "status", content: "Status" },
-      { key: "mission", content: "Mission" },
-      { key: "expiration", content: "Expiration", isSortable: true },
-      { key: "market_value_per_unit", content: "Value / Unit", isSortable: true },
-      { key: "total_value", content: "Total", isSortable: true },
-      { key: "valuation_source", content: "Valuation Source" },
-      { key: "acquisition_method", content: "Acquisition Method" },
-      { key: "actions", content: "Actions" },
+      { key: "item_description", content: "Item Description", isSortable: true, width: 200 },
+      { key: "manufacturer", content: "Manufacturer", isSortable: true, width: 150 },
+      { key: "reference_number", content: "Reference Number", isSortable: true, width: 150 },
+      { key: "quantity", content: "Quantity", isSortable: true, width: 100 },
+      { key: "status", content: "Status", width: 120 },
+      { key: "location", content: "Location", width: 120 },
+      { key: "expiration", content: "Expiration", isSortable: true, width: 140 },
+      { key: "actions", content: "Actions", width: 120 },
     ],
   };
 
@@ -106,7 +115,7 @@ export default function InventoryPage() {
     }
 
     return sortOrder === "ASC"
-      ? String(aVal).localeCompare(String(bVal))
+      ? String(aVal).localeCompare(String(aVal))
       : String(bVal).localeCompare(String(aVal));
   });
 
@@ -115,6 +124,7 @@ export default function InventoryPage() {
     if (item.expiration && item.expiration < new Date()) return false;
     return true;
   });
+
   const archivedItems = sortedItems.filter((item) => {
     if (item.status === "archived") return true;
     if (item.expiration && item.expiration < new Date()) return true;
@@ -125,25 +135,13 @@ export default function InventoryPage() {
     data.map((item) => ({
       key: String(item.id),
       cells: [
-        { content: item.item_description },
-        { content: item.manufacturer },
-        { content: item.reference_number },
-        { content: item.quantity },
-        { content: item.status },
-        { content: item.mission },
-        { content: item.expiration.toLocaleDateString() },
-        { content: `$${item.market_value_per_unit.toFixed(2)}` },
-        { content: `$${item.total_value.toFixed(2)}` },
-        {
-          content: item.valuation_source ? (
-            <a href={item.valuation_source} target="_blank" rel="noreferrer">
-              {item.valuation_source}
-            </a>
-          ) : (
-            "—"
-          ),
-        },
-        { content: item.acquisition_method ?? "—" },
+        { content: <Cell>{item.item_description}</Cell> },
+        { content: <Cell>{item.manufacturer}</Cell> },
+        { content: <Cell>{item.reference_number}</Cell> },
+        { content: <Cell>{item.quantity}</Cell> },
+        { content: <Cell>{item.status}</Cell> },
+        { content: <Cell>{item.location}</Cell> },
+        { content: <Cell>{item.expiration.toLocaleDateString()}</Cell> },
         {
           content: (
             <div style={{ display: "flex", gap: 8 }}>
@@ -174,7 +172,7 @@ export default function InventoryPage() {
         </Button>
       </div>
 
-      {/* Tabs for different table views*/}
+      {/* Tabs */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", borderBottom: "1px solid #DFE1E6", gap: 16 }}>
           {["active", "archived"].map((tab) => (
@@ -198,24 +196,26 @@ export default function InventoryPage() {
 
       {error && <div style={{ color: "#DE350B" }}>{error}</div>}
 
-      {/* Conditional table */}
-      <DynamicTable
-        head={head}
-        rows={createRows(selectedTab === "active" ? activeItems : archivedItems)}
-        sortKey={sortKey ?? undefined}
-        sortOrder={sortOrder}
-        onSort={({ key, sortOrder }) => {
-          setSortKey(key);
-          setSortOrder(sortOrder);
-        }}
-        rowsPerPage={10}
-        defaultPage={1}
-        emptyView={
-          <div style={{ padding: 16, textAlign: "center", color: "#6B778C" }}>
-            {selectedTab === "active" ? "No active items" : "No archived items"}
-          </div>
-        }
-      />
+      <div style={{ overflowX: "auto" }}>
+        <DynamicTable
+          head={head}
+          rows={createRows(selectedTab === "active" ? activeItems : archivedItems)}
+          sortKey={sortKey ?? undefined}
+          sortOrder={sortOrder}
+          onSort={({ key, sortOrder }) => {
+            setSortKey(key);
+            setSortOrder(sortOrder);
+          }}
+          rowsPerPage={10}
+          defaultPage={1}
+          isFixedSize
+          emptyView={
+            <div style={{ padding: 16, textAlign: "center", color: "#6B778C" }}>
+              {selectedTab === "active" ? "No active items" : "No archived items"}
+            </div>
+          }
+        />
+      </div>
 
       <ViewEditPanel
         isOpen={isViewPanelOpen}

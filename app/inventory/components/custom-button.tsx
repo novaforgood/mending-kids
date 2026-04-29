@@ -6,11 +6,13 @@ const CustomButton = ({
   backgroundColor = "#0052CC",
   textColor = "#FFFFFF",
   hoverColor = "#0065FF",
+  iconBefore,
   ...props
 }) => {
   return (
     <Button
       {...props}
+      iconBefore={iconBefore}
       style={{
         backgroundColor,
         color: textColor,
