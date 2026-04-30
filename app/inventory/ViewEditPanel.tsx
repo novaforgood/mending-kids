@@ -62,20 +62,34 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
     try {
       const data = await fetchItemActivityLog(item.id);
-      const activity = data.map((entry: any) => ({
-        key: `${entry.id}-${entry.created_at}`,
-        activity: entry.action_type,
-        status: "",
-        reason: entry.description || "",
-        user: entry.performed_by || "",
-        timestamp: entry.created_at,
-      }));
+      const activity = data.map((entry: any) => {
+        let formattedQuantity = "-";
+
+        if (entry.quantity != null) {
+          if (["added", "donated"].includes(entry.action_type)) {
+            formattedQuantity = `+${entry.quantity}`;
+          } else if (entry.action_type === "assigned") {
+            formattedQuantity = `-${entry.quantity}`;
+          } else {
+            formattedQuantity = `${entry.quantity}`;
+          }
+        }
+
+        return {
+          key: `${entry.id}-${entry.created_at}`,
+          activity: entry.action_type,
+          quantity: formattedQuantity, // 👈 use formatted value here
+          reason: entry.description || "",
+          user: entry.performed_by || "",
+          timestamp: entry.created_at,
+        };
+      });
+
       this.setState({ activity });
     } catch {
       this.setState({ activity: [] });
     }
   }
-
   renderExpirationLozenge(date?: Date) {
     if (!date) return null;
 
@@ -121,10 +135,10 @@ export default class ViewEditPanel extends React.Component<Props, State> {
         )}
 
         <div style={{ marginBottom: 24, display: "flex", gap: 12 }}>
-          <CustomButton backgroundColor="#251343" textColor="#FFFFFF" iconBefore={<AddIcon label="" />}>
+          <CustomButton iconBefore={<AddIcon label="" />}>
             Add Items
           </CustomButton>
-          <CustomButton backgroundColor="#A12654" textColor="#FFFFFF" iconBefore={<GlobeIcon label="" />}>
+          <CustomButton backgroundColor="#A12654" hoverColor="#B63A69"textColor="#FFFFFF" iconBefore={<GlobeIcon label="" />}>
             Assign to Mission
           </CustomButton>
         </div>
@@ -355,9 +369,9 @@ export default class ViewEditPanel extends React.Component<Props, State> {
           {selectedTab === "Activity" && (
             <ScrollablePaginatedTable
               columns={[
-                { key: "activity", header: "Activity", width: 100 },
-                { key: "status", header: "Status", width: 50 },
-                { key: "reason", header: "Reason", width: 100 },
+                { key: "activity", header: "Activity", width: 50 },
+                { key: "quantity", header: "Status", width: 50 },
+                { key: "reason", header: "Reason", width: 200 },
                 { key: "user", header: "User", width: 100 },
                 { key: "timestamp", header: "Date", width: 100 },
               ]}
@@ -365,7 +379,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
                 key: a.key,
                 cells: [
                   a.activity,
-                  a.status,
+                  a.quantity,
                   a.reason,
                   a.user,
                   new Date(a.timestamp).toLocaleDateString(),

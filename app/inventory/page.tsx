@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import DynamicTable from "@atlaskit/dynamic-table";
 import Button from "@atlaskit/button/new/";
+import CustomButton from "./components/custom-button";
 import { IconButton } from "@atlaskit/button/new";
 
 import AddIcon from "@atlaskit/icon/core/add";
@@ -167,9 +168,9 @@ export default function InventoryPage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <h1 style={{ fontSize: 24, fontWeight: 600 }}>Inventory</h1>
-        <Button appearance="primary" iconBefore={AddIcon} onClick={() => setIsPanelOpen(true)}>
+        <CustomButton backgroundColor="#422670" textColor="#FFFFFF" iconBefore={<AddIcon label="" />} onClick={() => setIsPanelOpen(true)}>
           Add Item
-        </Button>
+        </CustomButton>
       </div>
 
       {/* Tabs */}

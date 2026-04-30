@@ -3,9 +3,9 @@ import Button from "@atlaskit/button";
 
 const CustomButton = ({
   children,
-  backgroundColor = "#0052CC",
+  backgroundColor = "#422670",
   textColor = "#FFFFFF",
-  hoverColor = "#0065FF",
+  hoverColor = "#5A3A8C",
   iconBefore,
   ...props
 }) => {
