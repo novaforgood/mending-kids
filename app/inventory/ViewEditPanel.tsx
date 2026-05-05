@@ -1,9 +1,8 @@
 "use client";
 
 import React from "react";
-import Lozenge from "@atlaskit/lozenge";
+import CustomLozenge from "./components/custom-lozenge";
 import SectionMessage from "@atlaskit/section-message";
-import Tag from "@atlaskit/tag";
 import Breadcrumbs, { BreadcrumbsItem } from "@atlaskit/breadcrumbs";
 import CustomButton from "./components/custom-button";
 import { SwappedPageHeader } from "./components/swapped-page-header";
@@ -15,8 +14,9 @@ import { SidePanel } from "./components/SidePanel";
 import { fetchItemActivityLog } from "./actions";
 
 import AddIcon from "@atlaskit/icon/core/add";
-import GlobeIcon from '@atlaskit/icon/core/globe';
-import EditIcon from '@atlaskit/icon/core/edit';
+import GlobeIcon from "@atlaskit/icon/core/globe";
+import EditIcon from "@atlaskit/icon/core/edit";
+import CashIcon from '@atlaskit/icon/core/cash';
 
 interface Props {
   isOpen: boolean;
@@ -78,7 +78,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
         return {
           key: `${entry.id}-${entry.created_at}`,
           activity: entry.action_type,
-          quantity: formattedQuantity, // 👈 use formatted value here
+          quantity: formattedQuantity,
           reason: entry.description || "",
           user: entry.performed_by || "",
           timestamp: entry.created_at,
@@ -90,21 +90,19 @@ export default class ViewEditPanel extends React.Component<Props, State> {
       this.setState({ activity: [] });
     }
   }
+
+  // ---------------------------
+  // EXPIRATION LOZENGE
+  // ---------------------------
   renderExpirationLozenge(date?: Date) {
     if (!date) return null;
 
-    const today = new Date();
-    const diff =
-      (date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
-
-    let appearance: any = "success";
-    if (diff < 0) appearance = "removed";
-    else if (diff < 90) appearance = "inprogress";
+    const expText = `EXP ${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
 
     return (
-      <Lozenge appearance={appearance} isBold>
-        {date.toISOString().split("T")[0]}
-      </Lozenge>
+      <CustomLozenge appearance="exp" isBold>
+        {expText}
+      </CustomLozenge>
     );
   }
 
@@ -116,7 +114,8 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     if (!item) return null;
 
     const daysToExpiration = item.expiration
-      ? (item.expiration.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      ? (item.expiration.getTime() - Date.now()) /
+        (1000 * 60 * 60 * 24)
       : null;
 
     const expirationSoon =
@@ -138,18 +137,36 @@ export default class ViewEditPanel extends React.Component<Props, State> {
           <CustomButton iconBefore={<AddIcon label="" />}>
             Add Items
           </CustomButton>
-          <CustomButton backgroundColor="#A12654" hoverColor="#B63A69"textColor="#FFFFFF" iconBefore={<GlobeIcon label="" />}>
+          <CustomButton
+            backgroundColor="#A12654"
+            hoverColor="#B63A69"
+            textColor="#FFFFFF"
+            iconBefore={<GlobeIcon label="" />}
+          >
             Assign to Mission
           </CustomButton>
         </div>
 
         <div style={{ marginBottom: 24 }}>
-          <h4 style={{ marginBottom: 8 }}>Total Available</h4>
-          <Tag
-            text={`${item.quantity} ${(
+          <div
+            style={{
+              marginBottom: 12,
+              color: "#505258",
+              fontFamily: "Atlassian Sans, sans-serif",
+              fontSize: 16,
+              fontWeight: 653,
+              lineHeight: "24px",
+              fontFeatureSettings: "'liga' off, 'calt' off",
+            }}
+          >
+            Total Available
+          </div>
+
+          <CustomLozenge appearance="unit_stat" isBold>
+            {`${item.quantity} ${(
               item.unit_of_measure || "UNITS"
             ).toUpperCase()}`}
-          />
+          </CustomLozenge>
         </div>
 
         <ScrollablePaginatedTable
@@ -158,24 +175,12 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             { key: "value", header: "Value", width: 100 },
           ]}
           rows={[
-            {
-              key: "manufacturer",
-              cells: ["Manufacturer", item.manufacturer],
-            },
-            {
-              key: "reference",
-              cells: ["Reference Number", item.reference_number],
-            },
-            {
-              key: "lot",
-              cells: ["Lot Number", item.lot_number],
-            },
+            { key: "manufacturer", cells: ["Manufacturer", item.manufacturer] },
+            { key: "reference", cells: ["Reference Number", item.reference_number] },
+            { key: "lot", cells: ["Lot Number", item.lot_number] },
             {
               key: "unit",
-              cells: [
-                "Unit of Measure",
-                item.unit_of_measure?.label,
-              ],
+              cells: ["Unit of Measure", item.unit_of_measure?.label],
             },
           ]}
           rowsPerPage={5}
@@ -191,14 +196,51 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     const { item } = this.props;
     if (!item) return null;
 
-    const formatDate = (date?: Date | string) => {
-      if (!date) return "-";
-      return new Date(date).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-    };
+    const Field = ({ label, value }: { label: string; value: any }) => (
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <span style={{ fontSize: 12, color: "#6B778C", fontWeight: 600 }}>
+          {label}
+        </span>
+        <span style={{ fontSize: 14, color: "#172B4D" }}>
+          {value || "-"}
+        </span>
+      </div>
+    );
+
+    return (
+      <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 32 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+          <Field label="Manufacturing Company" value={item.manufacturer} />
+          <div />
+          <Field label="Reference Number" value={item.reference_number} />
+          <Field label="Lot Number" value={item.lot_number} />
+          <Field label="Unit of Measure" value={item.unit_of_measure?.label} />
+          <Field label="Typical Shelf Life" value={item.typical_shelf_life ? `${item.typical_shelf_life} days` : "-"} />
+          <Field label="Location" value={item.location} />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+          <Field label="Created By" value={item.created_by} />
+          <Field label="Created Date" value={new Date(item.created_at).toLocaleDateString()} />
+          <Field label="Last Updated" value={new Date(item.updated_at).toLocaleString() || "-"} />
+        </div>
+
+        <div>
+          <h4 style={{ marginBottom: 12 }}>Internal Notes</h4>
+          <div style={{ background: "#F4F5F7", padding: 16, borderRadius: 8 }}>
+            {item.internal_notes || "No notes for this item :)"}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------------------------
+  // DOCUMENTATION TAB
+  // ---------------------------
+  renderDocumentation() {
+    const { item } = this.props;
+    if (!item) return null;
 
     const Field = ({ label, value }: { label: string; value: any }) => (
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -213,68 +255,52 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
     return (
       <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 32 }}>
-        
-        {/* Section: Manufacturing */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 24,
-          }}
-        >
-          <Field label="Manufacturing Company" value={item.manufacturer} />
-          <div/>
-          <Field label="Reference Number" value={item.reference_number} />
-          <Field label="Lot Number" value={item.lot_number} />
-          <Field
-            label="Unit of Measure"
-            value={item.unit_of_measure?.label}
-          />
-          <Field
-            label="Typical Shelf Life"
-            value={
-              item.typical_shelf_life
-                ? `${item.typical_shelf_life} days`
-                : "-"
-            }
-          />
-          {/* Section: Inventory Info */}
-          <Field label="Location" value={item.location} />
+        {/* Valuation */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+          <Field iconBefore={<CashIcon label="" />} label="Total Value" value={item.total_value ? `$${item.total_value.toLocaleString()}` : "-"} />
+          <Field label="Market Value Per Unit" value={item.market_value_per_unit ? `$${item.market_value_per_unit}` : "-"} />
+          <Field label="Date Value Researched" value={item.value_researched_date ? new Date(item.value_researched_date).toLocaleDateString() : "-"} />
+          <Field label="Valuation Source" value={item.valuation_source} />
         </div>
 
-        {/* Section: Audit Info */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 24,
-          }}
-        >
-          <Field label="Created By" value={item.created_by} />
-          <Field label="Created Date" value={new Date(item.created_at).toLocaleDateString()} />
-          <Field label="Last Updated" value={new Date(item.updated_at).toLocaleString() || "-"} />
-        </div>
-
-        {/* Section: Notes */}
+        {/* Documents */}
         <div>
-          <h4 style={{ marginBottom: 12 }}>Internal Notes</h4>
           <div
             style={{
-              background: "#F4F5F7",
-              padding: 16,
-              borderRadius: 8,
-              minHeight: 80,
-              color: "#172B4D",
-              fontSize: 14,
-              lineHeight: 1.5,
+              marginBottom: 12,
+              color: "#505258",
+              fontFamily: "Atlassian Sans, sans-serif",
+              fontSize: 16,
+              fontWeight: 653,
+              lineHeight: "24px",
+              fontFeatureSettings: "'liga' off, 'calt' off",
             }}
           >
-            {item.internal_notes || "No notes for this item :)"}
+            Supporting Documents
           </div>
+          <ScrollablePaginatedTable
+            columns={[
+              { key: "name", header: "Document Name", width: 150 },
+              { key: "type", header: "Type", width: 100 },
+              { key: "uploaded_by", header: "Uploaded By", width: 100 },
+              { key: "date", header: "Date", width: 100 },
+            ]}
+            rows={(item.documents || []).map((doc: any) => ({
+              key: doc.id,
+              cells: [
+                doc.name,
+                doc.type,
+                doc.uploaded_by,
+                new Date(doc.created_at).toLocaleDateString(),
+              ],
+            }))}
+            rowsPerPage={5}
+          />
         </div>
       </div>
     );
   }
+
   // ---------------------------
   // RENDER
   // ---------------------------
@@ -289,25 +315,25 @@ export default class ViewEditPanel extends React.Component<Props, State> {
         isOpen={isOpen}
         onClose={onClose}
         title={
-          <div style={{ borderTop: "1px solid #DFE1E6" }}>
-            <Lozenge>IN STORAGE</Lozenge>{" "}
-            {this.renderExpirationLozenge(item.expiration)}
+          <div style={{ borderTop: "1px solid #DFE1E6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
+              <CustomLozenge appearance="stat" isBold>
+                IN STORAGE
+              </CustomLozenge>
+              {this.renderExpirationLozenge(item.expiration)}
+            </div>
+
+            <CustomLozenge appearance="unit_stat" isBold>
+              {item.quantity} {item.unit_of_measure?.label || "UNITS"}
+            </CustomLozenge>
           </div>
         }
         footer={
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, width: "100%" }}>
-            <CustomButton
-              backgroundColor="#EBECF0"
-              textColor="#172B4D"
-              onClick={onClose}
-            >
+            <CustomButton backgroundColor="#EBECF0" textColor="#172B4D" onClick={onClose}>
               Cancel
             </CustomButton>
-            <CustomButton
-              backgroundColor="#422670"
-              textColor="#FFFFFF"
-              iconBefore={<EditIcon label="" />}
-            >
+            <CustomButton backgroundColor="#422670" textColor="#FFFFFF" iconBefore={<EditIcon label="" />}>
               Edit Item
             </CustomButton>
           </div>
@@ -324,77 +350,44 @@ export default class ViewEditPanel extends React.Component<Props, State> {
         />
 
         {/* Tabs */}
-        <div
-          style={{
-            display: "flex",
-            borderBottom: "1px solid #DFE1E6",
-            gap: 16,
-            paddingTop: 12,
-          }}
-        >
-          {["Overview", "Activity", "Documentation", "Details"].map(
-            (tab) => (
-              <div
-                key={tab}
-                onClick={() =>
-                  this.setState({
-                    selectedTab:
-                      tab as State["selectedTab"],
-                  })
-                }
-                style={{
-                  padding: "8px 0",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  borderBottom:
-                    selectedTab === tab
-                      ? "2px solid #0052CC"
-                      : "none",
-                  color:
-                    selectedTab === tab
-                      ? "#0052CC"
-                      : "#172B4D",
-                }}
-              >
-                {tab}
-              </div>
-            )
-          )}
+        <div style={{ display: "flex", borderBottom: "1px solid #DFE1E6", gap: 16, paddingTop: 12 }}>
+          {["Overview", "Activity", "Documentation", "Details"].map((tab) => (
+            <div
+              key={tab}
+              onClick={() => this.setState({ selectedTab: tab as State["selectedTab"] })}
+              style={{
+                padding: "8px 0",
+                cursor: "pointer",
+                fontWeight: 600,
+                borderBottom: selectedTab === tab ? "2px solid #0052CC" : "none",
+                color: selectedTab === tab ? "#0052CC" : "#172B4D",
+              }}
+            >
+              {tab}
+            </div>
+          ))}
         </div>
 
-        {/* Tab Content */}
+        {/* Content */}
         <div style={{ marginTop: 16 }}>
           {selectedTab === "Overview" && this.renderOverview()}
-
           {selectedTab === "Activity" && (
             <ScrollablePaginatedTable
               columns={[
                 { key: "activity", header: "Activity", width: 50 },
-                { key: "quantity", header: "Status", width: 50 },
+                { key: "quantity", header: "Quantity", width: 50 },
                 { key: "reason", header: "Reason", width: 200 },
                 { key: "user", header: "User", width: 100 },
                 { key: "timestamp", header: "Date", width: 100 },
               ]}
               rows={this.state.activity.map((a) => ({
                 key: a.key,
-                cells: [
-                  a.activity,
-                  a.quantity,
-                  a.reason,
-                  a.user,
-                  new Date(a.timestamp).toLocaleDateString(),
-                ],
+                cells: [a.activity, a.quantity, a.reason, a.user, new Date(a.timestamp).toLocaleDateString()],
               }))}
               rowsPerPage={8}
             />
           )}
-
-          {selectedTab === "Documentation" && (
-            <div style={{ marginTop: 24 }}>
-              Documentation files will go here.
-            </div>
-          )}
-
+          {selectedTab === "Documentation" && this.renderDocumentation()}
           {selectedTab === "Details" && this.renderDetails()}
         </div>
       </SidePanel>
