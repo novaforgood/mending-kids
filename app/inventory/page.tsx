@@ -16,6 +16,8 @@ import AddItemPanel from "./utils/add-item-panel";
 import { InventoryItem } from "./types";
 import ViewEditPanel from "./utils/ViewEditPanel";
 
+import { useAuthUser } from "../hooks/authUser";
+
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +33,8 @@ export default function InventoryPage() {
 
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [panelMode, setPanelMode] = useState<"view" | "edit">("view");
+
+  const { user, loading } = useAuthUser();
 
   useEffect(() => {
     loadInventory();
