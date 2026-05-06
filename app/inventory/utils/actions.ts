@@ -50,6 +50,18 @@ async function logInventoryChange(
 }
 
 /* Fetch all inventory items */
+export async function fetchItemActivityLog(inventoryId: number) {
+  const { data, error } = await supabaseServer
+    .from("activity_log")
+    .select("*")
+    .eq("inventory_id", inventoryId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/* Fetch all inventory items */
 export async function fetchInventory() {
   const { data, error } = await supabaseServer
     .from("inventory")
@@ -63,13 +75,19 @@ export async function fetchInventory() {
   return data;
 }
 
+/** Normalize to 2 decimal places before send (DB should use numeric — see sql/inventory_money_numeric.sql). */
+function money2(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
 /* Add a new inventory item */
 export async function addItem(payload: InventoryPayload, userEmail: string) {
   const { data, error } = await supabaseServer
     .from("inventory")
     .insert({
       ...payload,
-      total_value: payload.quantity * payload.market_value_per_unit,
+      total_value: money2(payload.quantity * payload.market_value_per_unit),
     })
     .select()
     .single();
@@ -97,11 +115,13 @@ export async function updateItemDocumentation(
 
   if (fetchError) throw new Error(fetchError.message);
 
+  const unit = money2(marketValuePerUnit);
+
   const { error } = await supabaseServer
     .from("inventory")
     .update({
-      market_value_per_unit: marketValuePerUnit,
-      total_value: oldItem.quantity * marketValuePerUnit,
+      market_value_per_unit: unit,
+      total_value: money2(oldItem.quantity * unit),
       valuation_source: valuationSource,
       acquisition_method: acquisitionMethod,
     })
@@ -185,4 +205,82 @@ export async function updateItemQuantity(
       ...(newQuantity === 0 ? { status: { old: oldItem.status, new: "archived" } } : {}),
     }
   );
+}
+
+export async function updateItemDetails(
+  id: number,
+  payload: Partial<{
+    manufacturer: string;
+    reference_number: string;
+    lot_number: string;
+    unit_of_measure: string;
+    typical_shelf_life: string;
+    location: string;
+    internal_notes: string;
+  }>,
+  userEmail: string
+) {
+  const { data: oldItem, error: fetchError } = await supabaseServer
+    .from("inventory")
+    .select(
+      "manufacturer, reference_number, lot_number, unit_of_measure, typical_shelf_life, location, internal_notes, item_description"
+    )
+    .eq("id", id)
+    .single();
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  const cleanPayload = Object.fromEntries(
+    Object.entries(payload).filter(([_, v]) => v !== undefined)
+  );
+
+  const { error } = await supabaseServer
+    .from("inventory")
+    .update(cleanPayload)
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
+
+  await logInventoryChange("edited", userEmail, id, oldItem.item_description, {
+    manufacturer:
+      payload.manufacturer !== undefined
+        ? { old: oldItem.manufacturer, new: payload.manufacturer }
+        : undefined,
+
+    reference_number:
+      payload.reference_number !== undefined
+        ? { old: oldItem.reference_number, new: payload.reference_number }
+        : undefined,
+
+    lot_number:
+      payload.lot_number !== undefined
+        ? { old: oldItem.lot_number, new: payload.lot_number }
+        : undefined,
+
+    unit_of_measure:
+      payload.unit_of_measure !== undefined
+        ? { old: oldItem.unit_of_measure, new: payload.unit_of_measure }
+        : undefined,
+
+    typical_shelf_life:
+      payload.typical_shelf_life !== undefined
+        ? {
+            old: oldItem.typical_shelf_life,
+            new: payload.typical_shelf_life,
+          }
+        : undefined,
+
+    location:
+      payload.location !== undefined
+        ? { old: oldItem.location, new: payload.location }
+        : undefined,
+
+    internal_notes:
+      payload.internal_notes !== undefined
+        ? {
+            old: oldItem.internal_notes || "",
+            new: payload.internal_notes || "",
+          }
+        : undefined,
+  });
 }

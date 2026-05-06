@@ -13,7 +13,7 @@ import ScrollablePaginatedTable from "./components/scrollable-table";
 
 import { InventoryItem } from "./utils/types";
 import { SidePanel } from "./components/SidePanel";
-import { fetchItemActivityLog, updateItemDetails } from "./actions";
+import { fetchItemActivityLog, updateItemDetails } from "./utils/actions";
 
 import AddIcon from "@atlaskit/icon/core/add";
 import GlobeIcon from "@atlaskit/icon/core/globe";
