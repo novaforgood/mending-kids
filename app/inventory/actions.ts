@@ -75,16 +75,22 @@ export async function fetchInventory() {
   return data;
 }
 
+/** Normalize to 2 decimal places before send (DB should use numeric — see sql/inventory_money_numeric.sql). */
+function money2(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
 /* Add a new inventory item */
-export async function addItem(payload: InventoryPayload, userEmail: string) {
-  const { data, error } = await supabaseServer
+export async function addItem(payload: InventoryPayload) {
+  const unit = money2(payload.market_value_per_unit);
+  const { error } = await supabaseServer
     .from("inventory")
     .insert({
       ...payload,
-      total_value: payload.quantity * payload.market_value_per_unit,
-    })
-    .select()
-    .single();
+      market_value_per_unit: unit,
+      total_value: money2(payload.quantity * unit),
+    });
 
   if (error) {
     throw new Error(error.message);
@@ -109,11 +115,13 @@ export async function updateItemDocumentation(
 
   if (fetchError) throw new Error(fetchError.message);
 
+  const unit = money2(marketValuePerUnit);
+
   const { error } = await supabaseServer
     .from("inventory")
     .update({
-      market_value_per_unit: marketValuePerUnit,
-      total_value: oldItem.quantity * marketValuePerUnit,
+      market_value_per_unit: unit,
+      total_value: money2(Number(item.quantity) * unit),
       valuation_source: valuationSource,
       acquisition_method: acquisitionMethod,
     })

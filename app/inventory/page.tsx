@@ -74,7 +74,6 @@ export default function InventoryPage() {
     }
   }
 
-  // 🔹 Reusable cell wrapper to prevent stretching
   const Cell = ({ children }: { children: React.ReactNode }) => (
     <div
       style={{

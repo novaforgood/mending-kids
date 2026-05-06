@@ -5,7 +5,8 @@ import Button from "@atlaskit/button/new";
 import Textfield from "@atlaskit/textfield";
 import CameraIcon from "@atlaskit/icon/core/camera";
 import LinkIcon from "@atlaskit/icon/core/link";
-import { InventoryPayload } from "../utils/actions";
+import { InventoryPayload } from "../actions";
+import ValuationSuggestedSources from "./ValuationSuggestedSources";
 
 type AddItemPanelProps = {
   isOpen: boolean;
@@ -47,11 +48,6 @@ export default function AddItemPanel({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const aiSuggestedSources = [
-    "https://www.amazon.com/JorVet-Veterinary-Grad...",
-    "https://www.abbott.com/en-us/products-solution...",
-  ];
 
   const isFilled = valuationSource.trim() !== "";
 
@@ -365,40 +361,12 @@ export default function AddItemPanel({
                 </div>
               </div>
 
-              {/* AI Suggested Sources — hidden when filled */}
-              {!isFilled && (
-                <div>
-                  {label("AI Suggested Sources")}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {aiSuggestedSources.map((source, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setValuationSource(source)}
-                        style={{
-                          background: "#F4F5F7",
-                          border: "none",
-                          textAlign: "left",
-                          padding: "8px 12px",
-                          cursor: "pointer",
-                          color: "#0052CC",
-                          fontSize: 13,
-                          borderRadius: 4,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#DEEBFF"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#F4F5F7"; }}
-                      >
-                        <span>🌐</span>
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {source}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <ValuationSuggestedSources
+                searchQuery={itemDescription}
+                valuationSource={valuationSource}
+                onValuationSourceChange={setValuationSource}
+                sectionLabel="AI Suggested Sources"
+              />
 
               {/* Acquisition Method */}
               <div style={{ borderRadius: 4, outline: isFilled ? "2px dashed #0052CC" : "none", padding: isFilled ? 12 : 0 }}>
@@ -518,7 +486,7 @@ export default function AddItemPanel({
               </Button>
             )}
             <Button appearance="primary" isLoading={isSaving} onClick={handleNext}>
-              Next →
+              {step === 2 ? "Submit" : "Next →"}
             </Button>
           </div>
         </div>
