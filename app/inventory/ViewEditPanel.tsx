@@ -6,12 +6,14 @@ import SectionMessage from "@atlaskit/section-message";
 import Breadcrumbs, { BreadcrumbsItem } from "@atlaskit/breadcrumbs";
 import CustomButton from "./components/custom-button";
 import { SwappedPageHeader } from "./components/swapped-page-header";
+import CustomInlineEdit from "./components/CustomInlineEdit";
+import Textfield from '@atlaskit/textfield';
 
 import ScrollablePaginatedTable from "./components/scrollable-table";
 
 import { InventoryItem } from "./utils/types";
 import { SidePanel } from "./components/SidePanel";
-import { fetchItemActivityLog } from "./actions";
+import { fetchItemActivityLog, updateItemDetails } from "./actions";
 
 import AddIcon from "@atlaskit/icon/core/add";
 import GlobeIcon from "@atlaskit/icon/core/globe";
@@ -30,13 +32,31 @@ interface State {
   isEditing: boolean;
   selectedTab: "Overview" | "Activity" | "Documentation" | "Details";
   activity: any[];
-}
 
+  form: {
+    manufacturer: string;
+    reference_number: string;
+    lot_number: string;
+    unit_of_measure: string;
+    typical_shelf_life: string;
+    location: string;
+    internal_notes: string;
+  };
+}
 export default class ViewEditPanel extends React.Component<Props, State> {
   state: State = {
     isEditing: false,
     selectedTab: "Overview",
     activity: [],
+    form: {
+      manufacturer: "",
+      reference_number: "",
+      lot_number: "",
+      unit_of_measure: "",
+      typical_shelf_life: "",
+      location: "",
+      internal_notes: "",
+    },
   };
 
   componentDidMount() {
@@ -48,10 +68,25 @@ export default class ViewEditPanel extends React.Component<Props, State> {
       prevProps.mode !== this.props.mode ||
       prevProps.item !== this.props.item
     ) {
-      this.setState({ isEditing: this.props.mode === "edit" });
+      const item = this.props.item;
+
+      this.setState({
+        isEditing: this.props.mode === "edit",
+        form: item
+          ? {
+              manufacturer: item.manufacturer || "",
+              reference_number: item.reference_number || "",
+              lot_number: item.lot_number || "",
+              unit_of_measure: item.unit_of_measure?.label || item.unit_of_measure || "",
+              typical_shelf_life: item.typical_shelf_life || "",
+              location: item.location || "",
+              internal_notes: item.internal_notes || "",
+            }
+          : this.state.form,
+      });
+
       this.loadActivity();
-    }
-  }
+    }  }
 
   // ---------------------------
   // ACTIVITY TAB LOGIC
@@ -189,52 +224,189 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     );
   }
 
-  // ---------------------------
-  // DETAILS TAB
-  // ---------------------------
-  renderDetails() {
-    const { item } = this.props;
-    if (!item) return null;
+// ---------------------------
+// DETAILS TAB
+// ---------------------------
+renderDetails() {
+  const { item } = this.props;
+  if (!item) return null;
 
-    const Field = ({ label, value }: { label: string; value: any }) => (
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span style={{ fontSize: 12, color: "#6B778C", fontWeight: 600 }}>
-          {label}
-        </span>
-        <span style={{ fontSize: 14, color: "#172B4D" }}>
-          {value || "-"}
-        </span>
-      </div>
-    );
+  const { form, isEditing } = this.state;
 
-    return (
-      <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 32 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-          <Field label="Manufacturing Company" value={item.manufacturer} />
-          <div />
-          <Field label="Reference Number" value={item.reference_number} />
-          <Field label="Lot Number" value={item.lot_number} />
-          <Field label="Unit of Measure" value={item.unit_of_measure?.label} />
-          <Field label="Typical Shelf Life" value={item.typical_shelf_life ? `${item.typical_shelf_life} days` : "-"} />
-          <Field label="Location" value={item.location} />
+  const updateField = (key: keyof State["form"], value: string) => {
+    this.setState({
+      form: {
+        ...form,
+        [key]: value,
+      },
+    });
+  };
+
+  const renderField = (
+    label: string,
+    key: keyof State["form"],
+    placeholder?: string
+  ) => {
+    // =========================
+    // BULK EDIT MODE (ALL FIELDS)
+    // =========================
+    if (isEditing) {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
+            {label}
+          </div>
+
+          <input
+            value={form[key] ?? ""}
+            placeholder={placeholder}
+            onChange={(e) => updateField(key, e.target.value)}
+            style={{
+              padding: 8,
+              border: "1px solid #DFE1E6",
+              borderRadius: 6,
+              fontSize: 14,
+            }}
+          />
         </div>
+      );
+    }
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-          <Field label="Created By" value={item.created_by} />
-          <Field label="Created Date" value={new Date(item.created_at).toLocaleDateString()} />
-          <Field label="Last Updated" value={new Date(item.updated_at).toLocaleString() || "-"} />
+    // =========================
+    // INLINE MODE (DEFAULT)
+    // =========================
+    return (
+      <CustomInlineEdit
+        label={label}
+        value={(form[key] as string) || (placeholder ?? "")}
+        onSave={async (v) => {
+          updateField(key, v);
+
+          await updateItemDetails(
+            item.id,
+            {
+              [key]: v,
+            } as any,
+            "user@email.com"
+          );
+        }}
+      />
+    );
+  };
+
+  return (
+    <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 32 }}>
+      {/* MAIN GRID */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 24,
+        }}
+      >
+        {renderField("Manufacturing Company", "manufacturer", item.manufacturer)}
+
+        <div />
+
+        {renderField("Reference Number", "reference_number", item.reference_number)}
+
+        {renderField("Lot Number", "lot_number", item.lot_number)}
+
+        {renderField(
+          "Unit of Measure",
+          "unit_of_measure",
+          item.unit_of_measure?.label || item.unit_of_measure
+        )}
+
+        {renderField(
+          "Typical Shelf Life",
+          "typical_shelf_life",
+          item.typical_shelf_life ? `${item.typical_shelf_life} days` : ""
+        )}
+
+        {renderField("Location", "location", item.location)}
+      </div>
+
+      {/* META */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 24,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
+            Created By
+          </div>
+          <div style={{ fontSize: 14, color: "#172B4D" }}>
+            {item.created_by || "-"}
+          </div>
         </div>
 
         <div>
-          <h4 style={{ marginBottom: 12 }}>Internal Notes</h4>
-          <div style={{ background: "#F4F5F7", padding: 16, borderRadius: 8 }}>
-            {item.internal_notes || "No notes for this item :)"}
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
+            Created Date
+          </div>
+          <div style={{ fontSize: 14, color: "#172B4D" }}>
+            {new Date(item.created_at).toLocaleDateString()}
+          </div>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
+            Last Updated
+          </div>
+          <div style={{ fontSize: 14, color: "#172B4D" }}>
+            {new Date(item.updated_at).toLocaleString()}
           </div>
         </div>
       </div>
-    );
-  }
 
+      {/* INTERNAL NOTES */}
+      <div>
+        <h4 style={{ marginBottom: 12 }}>Internal Notes</h4>
+
+        {isEditing ? (
+          <textarea
+            value={form.internal_notes}
+            placeholder={item.internal_notes || "Add notes..."}
+            onChange={(e) =>
+              this.setState({
+                form: {
+                  ...form,
+                  internal_notes: e.target.value,
+                },
+              })
+            }
+            style={{
+              width: "100%",
+              minHeight: 100,
+              padding: 12,
+              borderRadius: 8,
+              border: "1px solid #DFE1E6",
+              fontSize: 14,
+            }}
+          />
+        ) : (
+          <CustomInlineEdit
+            label="Internal Notes"
+            value={form.internal_notes || item.internal_notes || ""}
+            onSave={async (v) => {
+              updateField("internal_notes", v);
+
+              await updateItemDetails(
+                item.id,
+                { internal_notes: v },
+                "user@email.com"
+              );
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
   // ---------------------------
   // DOCUMENTATION TAB
   // ---------------------------
@@ -333,12 +505,34 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             <CustomButton backgroundColor="#EBECF0" textColor="#172B4D" onClick={onClose}>
               Cancel
             </CustomButton>
-            <CustomButton backgroundColor="#422670" textColor="#FFFFFF" iconBefore={<EditIcon label="" />}>
-              Edit Item
-            </CustomButton>
+
+            {this.state.isEditing ? (
+              <CustomButton
+                backgroundColor="#422670"
+                textColor="#FFFFFF"
+                onClick={async () => {
+                  const { item } = this.props;
+                  if (!item) return;
+
+                  await updateItemDetails(item.id, this.state.form, "user@email.com");
+
+                  this.setState({ isEditing: false });
+                }}
+              >
+                Save Changes
+              </CustomButton>
+            ) : (
+              <CustomButton
+                backgroundColor="#422670"
+                textColor="#FFFFFF"
+                iconBefore={<EditIcon label="" />}
+                onClick={() => this.setState({ isEditing: true })}
+              >
+                Edit Item
+              </CustomButton>
+            )}
           </div>
-        }
-      >
+        }      >
         <SwappedPageHeader
           title={item.item_description}
           breadcrumbs={
