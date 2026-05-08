@@ -5,6 +5,7 @@ import Button from "@atlaskit/button/new";
 import Form, { Field, FormFooter } from "@atlaskit/form";
 import Textfield from "@atlaskit/textfield";
 import { addMission, addMissionItem, addMissionMember, fetchInventory } from "./actions";
+import { useAuthUser } from "@/app/hooks/authUser";
 
 type Props = {
   isOpen: boolean;
@@ -24,6 +25,28 @@ type FormValues = {
   doctor_phone: string;
   team_members: string;
   budget: string;
+};
+
+const overlayStyle = {
+  position: "fixed" as const,
+  top: 0,
+  left: 0,
+  width: "100%",
+  height: "100%",
+  backgroundColor: "rgba(0, 0, 0, 0.4)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 1000,
+};
+
+const popupStyle = {
+  backgroundColor: "white",
+  padding: "20px",
+  borderRadius: "8px",
+  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+  textAlign: "center" as const,
+  minWidth: "300px",
 };
 
 type InventoryItem = {
@@ -93,6 +116,9 @@ export default function AddMissionPanel({ isOpen, onClose, onCreated }: Props) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Record<number, number>>({}); // id → quantity
   const [saving, setSaving] = useState(false);
+  const [popupMessage, setPopupMessage] = useState("");
+const [showPopup, setShowPopup] = useState(false);
+const { user, loading } = useAuthUser();
 
   // Reset all state when drawer closes
   useEffect(() => {
@@ -114,8 +140,16 @@ export default function AddMissionPanel({ isOpen, onClose, onCreated }: Props) {
 
   // ── Step 2: create mission + optional items, then close ───────────────────
   const handleFinish = async (skipItems: boolean) => {
-    if (!pendingValues) return;
-    setSaving(true);
+  if (!pendingValues) return;
+  setSaving(true);
+
+ if (user?.user_metadata?.role !== "admin") {
+  setPopupMessage("You do not have permission to add items.");
+  setShowPopup(true);
+  setSaving(false);
+  return;
+}
+
     try {
       const created = await addMission({
         mission_name: pendingValues.mission_name,
@@ -156,9 +190,10 @@ export default function AddMissionPanel({ isOpen, onClose, onCreated }: Props) {
 
       if (created?.id && onCreated) onCreated(created.id);
       onClose();
-    } catch (err) {
-      console.error(err);
-    } finally {
+    } catch (err: any) {
+  setPopupMessage(err.message || "You do not have permission to add items.");
+  setShowPopup(true);
+} finally {
       setSaving(false);
     }
   };
@@ -628,6 +663,14 @@ export default function AddMissionPanel({ isOpen, onClose, onCreated }: Props) {
           );
         })()}
       </div>
+      {showPopup && (
+  <div style={overlayStyle}>
+    <div style={popupStyle}>
+      <p>{popupMessage}</p>
+      <button onClick={() => setShowPopup(false)}>OK</button>
+    </div>
+  </div>
+)}
     </>
   );
 }

@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addMissionItem } from "../../actions";
+import { useAuthUser } from "@/app/hooks/authUser";
+
 
 type InventoryItem = {
   id: number;
@@ -14,6 +16,29 @@ type InventoryItem = {
   quantity: number | null;
   unit_of_measure: string | null;
 };
+
+const overlayStyle = {
+  position: "fixed" as const,
+  top: 0,
+  left: 0,
+  width: "100%",
+  height: "100%",
+  backgroundColor: "rgba(0, 0, 0, 0.4)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 1000,
+};
+
+const popupStyle = {
+  backgroundColor: "white",
+  padding: "20px",
+  borderRadius: "8px",
+  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+  textAlign: "center" as const,
+  minWidth: "300px",
+};
+
 
 type Props = {
   missionId: number;
@@ -35,6 +60,9 @@ export default function AddItemsClient({ missionId, inventory }: Props) {
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<number, number>>({}); // id → qty
   const [saving, setSaving] = useState(false);
+  const [popupMessage, setPopupMessage] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
+  const { user, loading } = useAuthUser();
 
   const selectedCount = Object.keys(selected).length;
 
@@ -77,21 +105,29 @@ export default function AddItemsClient({ missionId, inventory }: Props) {
   const handleSubmit = async () => {
     if (selectedCount === 0) return;
     setSaving(true);
+
+ if (user?.user_metadata?.role !== "admin") {
+  setPopupMessage("You do not have permission to add items.");
+  setShowPopup(true);
+  setSaving(false);
+  return;
+}
+
+
     try {
-      await Promise.all(
-        Object.entries(selected).map(([inventoryId, qty]) =>
-          addMissionItem({
-            mission_id: missionId,
-            inventory_id: Number(inventoryId),
-            quantity: qty,
-          })
-        )
-      );
-      router.push(`/missions/${missionId}`);
-    } catch (err) {
-      console.error(err);
-      setSaving(false);
-    }
+  await Promise.all(
+    Object.entries(selected).map(([inventoryId, qty]) =>
+      addMissionItem({
+        mission_id: missionId,
+        inventory_id: Number(inventoryId),
+        quantity: qty,
+      })
+    )
+  );
+} catch (err: any) {
+  setPopupMessage(err.message || "You do not have permission.");
+  setShowPopup(true);
+}
   };
 
   const selectedItems = inventory.filter((item) => item.id in selected);
@@ -347,6 +383,15 @@ export default function AddItemsClient({ missionId, inventory }: Props) {
           </table>
         </div>
 
+        {showPopup && (
+  <div style={overlayStyle}>
+    <div style={popupStyle}>
+      <p>{popupMessage}</p>
+      <button onClick={() => setShowPopup(false)}>OK</button>
+    </div>
+  </div>
+)}
+
         {/* Footer */}
         <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
           <Link
@@ -365,5 +410,6 @@ export default function AddItemsClient({ missionId, inventory }: Props) {
         </div>
       </div>
     </div>
+    
   );
 }
