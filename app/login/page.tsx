@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import styles from "./login.module.css";
 
-import { supabase } from "@/lib/supabase/supabaseClient";
+import { supabaseBrowser as supabase } from "@/lib/supabase/client";
 
 
 export default function LoginPage() {
@@ -28,14 +28,11 @@ export default function LoginPage() {
 
   const role = data.user?.user_metadata?.role;
 
-  if (role === "admin") {
-    window.location.href = "/admin";
-  } else if (role === "intern") {
-    window.location.href = "/intern";
-  } else {
-    alert("No valid role found for this user.");
-    console.log("User metadata:", data.user?.user_metadata);
-  }
+if (!role) {
+  console.log("User metadata:", data.user?.user_metadata);
+}
+
+window.location.href = "/missions";
 };
 
   return (

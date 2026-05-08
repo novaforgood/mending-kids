@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 import Form, { Field, FormFooter } from "@atlaskit/form";
 import Textfield from "@atlaskit/textfield";
 import Button from "@atlaskit/button/new";
 import SidePanel, { PanelLabel } from "@/components/SidePanel";
 import { fetchMissionFull, updateMission } from "../actions";
+import { useAuthUser } from "@/app/hooks/authUser";
 
 const CATEGORIES = ["ENT", "Medical", "Dental", "Surgical", "Educational", "Other"];
 const LOCATIONS = ["Guatemala", "Honduras", "Mexico", "El Salvador", "Nicaragua", "Other"];
@@ -46,10 +47,35 @@ type FormValues = {
   budget: string;
 };
 
+const overlayStyle = {
+  position: "fixed" as const,
+  top: 0,
+  left: 0,
+  width: "100%",
+  height: "100%",
+  backgroundColor: "rgba(0, 0, 0, 0.4)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 1000,
+};
+
+const popupStyle = {
+  backgroundColor: "white",
+  padding: "20px",
+  borderRadius: "8px",
+  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+  textAlign: "center" as const,
+  minWidth: "300px",
+};
+
 export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }: Props) {
   const [defaults, setDefaults] = useState<Partial<FormValues>>({});
   const [saving, setSaving] = useState(false);
   const [formKey, setFormKey] = useState(0); // force re-mount when data loads
+  const [popupMessage, setPopupMessage] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
+  const { user, loading } = useAuthUser();
 
   // Fetch full mission data when drawer opens
   useEffect(() => {
@@ -76,6 +102,11 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
 
   const handleSubmit = async (values: FormValues) => {
     setSaving(true);
+    if (user.user_metadata.role != "admin") {
+        setPopupMessage("You do not have permission to edit this.");
+        setShowPopup(true);
+        return;
+    }
     try {
       await updateMission(missionId, {
         mission_name: values.mission_name,
@@ -87,9 +118,9 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
       });
       onSaved();
       onClose();
-    } catch (err) {
-      console.error(err);
-    } finally {
+    } catch (err: any) {
+
+} finally {
       setSaving(false);
     }
   };
@@ -273,6 +304,16 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
           </form>
         )}
       </Form>
+
+      {showPopup && (
+  <div style={overlayStyle}>
+    <div style={popupStyle}>
+      <p>{popupMessage}</p>
+      <button onClick={() => setShowPopup(false)}>OK</button>
+    </div>
+  </div>
+)}
+
     </SidePanel>
   );
 }

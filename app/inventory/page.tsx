@@ -18,6 +18,8 @@ import { InventoryItem } from "./utils/types";
 import ViewEditPanel from "./ViewEditPanel";
 import { supabase } from "@/lib/supabase/supabaseClient";
 
+import { useAuthUser } from "../hooks/authUser";
+
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +36,8 @@ export default function InventoryPage() {
   const [panelMode, setPanelMode] = useState<"view" | "edit">("view");
 
   const [selectedTab, setSelectedTab] = useState<"active" | "archived">("active");
+
+  const { user, loading } = useAuthUser();
 
   useEffect(() => {
     loadInventory();
