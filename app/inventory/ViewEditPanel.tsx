@@ -553,8 +553,8 @@ renderDetails() {
                 padding: "8px 0",
                 cursor: "pointer",
                 fontWeight: 600,
-                borderBottom: selectedTab === tab ? "2px solid #0052CC" : "none",
-                color: selectedTab === tab ? "#0052CC" : "#172B4D",
+                borderBottom: selectedTab === tab ? "2px solid #422670" : "none",
+                color: selectedTab === tab ? "#422670" : "#172B4D",
               }}
             >
               {tab}

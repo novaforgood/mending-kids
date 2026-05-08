@@ -184,11 +184,12 @@ export default function InventoryPage() {
               key={tab}
               onClick={() => setSelectedTab(tab as "active" | "archived")}
               style={{
-                padding: "8px 0",
+                padding: "8px 50px",
                 cursor: "pointer",
                 fontWeight: 600,
-                borderBottom: selectedTab === tab ? "2px solid #0052CC" : "none",
-                color: selectedTab === tab ? "#0052CC" : "#172B4D",
+                fontSize: "16px",
+                borderBottom: selectedTab === tab ? "2px solid #5137A2" : "none",
+                color: selectedTab === tab ? "#5137A2" : "#172B4D",
                 textTransform: "capitalize",
               }}
             >
