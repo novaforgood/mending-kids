@@ -12,34 +12,14 @@ import ScrollablePaginatedTable from "./components/scrollable-table";
 
 import { InventoryItem } from "./utils/types";
 import { SidePanel } from "./components/SidePanel";
-import { fetchItemActivityLog, updateItemDetails } from "./utils/actions";
+import { fetchItemActivityLog, updateItemDetails, UpdateItemDetailsPayload } from "./utils/actions";
 
 import AddIcon from "@atlaskit/icon/core/add";
 import GlobeIcon from "@atlaskit/icon/core/globe";
 import EditIcon from "@atlaskit/icon/core/edit";
 
-interface Props {
-  isOpen: boolean;
-  onClose: () => void;
-  item: InventoryItem | null;
-  setItems?: React.Dispatch<React.SetStateAction<InventoryItem[]>>;
-}
+import {State, Props, ActivityEntry, DocumentEntry} from "./types";
 
-interface State {
-  isEditing: boolean;
-  selectedTab: "Overview" | "Activity" | "Documentation" | "Details";
-  activity: any[];
-
-  form: {
-    manufacturer: string;
-    reference_number: string;
-    lot_number: string;
-    unit_of_measure: string;
-    typical_shelf_life: string;
-    location: string;
-    internal_notes: string;
-  };
-}
 export default class ViewEditPanel extends React.Component<Props, State> {
   state: State = {
     isEditing: false,
@@ -92,7 +72,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
     try {
       const data = await fetchItemActivityLog(item.id);
-      const activity = data.map((entry: any) => {
+      const activity = data.map((entry: ActivityEntry) => {
         let formattedQuantity = "-";
 
         if (entry.quantity != null) {
@@ -203,10 +183,10 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             { key: "value", header: "Value", width: 100 },
           ]}
           rows={[
-            { key: "manufacturer", cells: ["Manufacturer", item.manufacturer] },
-            { key: "reference", cells: ["Reference Number", item.reference_number] },
-            { key: "lot", cells: ["Lot Number", item.lot_number] },
-            { key: "unit", cells: ["Unit of Measure", item.unit_of_measure] },
+            { key: "manufacturer", cells: ["Manufacturer", item.manufacturer ?? ""] },
+            { key: "reference", cells: ["Reference Number", item.reference_number ?? ""] },
+            { key: "lot", cells: ["Lot Number", item.lot_number ?? ""] },
+            { key: "unit", cells: ["Unit of Measure", item.unit_of_measure ?? ""] },
           ]}
           rowsPerPage={5}
         />
@@ -266,7 +246,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             updateField(key, v);
             await updateItemDetails(
               item.id,
-              { [key]: v } as any,
+              { [key]: v } as UpdateItemDetailsPayload,
               "user@email.com"
             );
           }}
@@ -390,7 +370,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     const { item } = this.props;
     if (!item) return null;
 
-    const Field = ({ label, value }: { label: string; value: any }) => (
+    const Field = ({ label, value }: { label: string; value: string }) => (
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <span style={{ fontSize: 12, color: "#6B778C", fontWeight: 600 }}>
           {label}
@@ -433,7 +413,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
               { key: "uploaded_by", header: "Uploaded By", width: 100 },
               { key: "date", header: "Date", width: 100 },
             ]}
-            rows={(item.documents ?? []).map((doc: any) => ({
+            rows={(item.documents ?? []).map((doc: DocumentEntry) => ({
               key: doc.id,
               cells: [
                 doc.name,

@@ -1,25 +1,7 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabase/server";
-
-export type InventoryPayload = {
-  item_description: string;
-  manufacturer: string;
-  reference_number: string;
-  lot_number: string;
-  unit_of_measure: string;
-  typical_shelf_life: string;
-  location: string;
-  quantity: number;
-  status: string;
-  mission: string;
-  expiration: Date;
-  market_value_per_unit: number;
-  valuation_source: string;
-  acquisition_method: string;
-};
-
-type ChangeType = "added" | "edited" | "deleted" | "archived";
+import { InventoryPayload, ChangeType } from "./types";
 
 async function logInventoryChange(
   type: ChangeType,
@@ -209,15 +191,7 @@ export async function updateItemQuantity(
 
 export async function updateItemDetails(
   id: number,
-  payload: Partial<{
-    manufacturer: string;
-    reference_number: string;
-    lot_number: string;
-    unit_of_measure: string;
-    typical_shelf_life: string;
-    location: string;
-    internal_notes: string;
-  }>,
+  payload: UpdateItemDetailsPayload,
   userEmail: string
 ) {
   const { data: oldItem, error: fetchError } = await supabaseServer
