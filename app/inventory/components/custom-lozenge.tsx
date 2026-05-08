@@ -12,7 +12,6 @@ type Appearance =
 interface Props {
   children: React.ReactNode;
   appearance?: Appearance;
-  isBold?: boolean;
 }
 
 const appearanceStyles: Record<
@@ -38,7 +37,6 @@ const appearanceStyles: Record<
 const CustomLozenge: React.FC<Props> = ({
   children,
   appearance = "default",
-  isBold = false,
 }) => {
   const { bg, color, border } = appearanceStyles[appearance];
 
@@ -53,7 +51,7 @@ const CustomLozenge: React.FC<Props> = ({
         border: border || "none",
         color: color,
         fontSize: 11,
-        fontWeight: isBold ? 700 : 500,
+        fontWeight: 700,
         lineHeight: "16px",
         textTransform: "uppercase",
         whiteSpace: "nowrap",

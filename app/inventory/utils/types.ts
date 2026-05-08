@@ -1,6 +1,8 @@
 export type InventoryItem = {
   id: number;
   created_at: string;
+  updated_at: string;
+  created_by: string | null;
   item_description: string;
   manufacturer: string;
   reference_number: string;
@@ -12,8 +14,17 @@ export type InventoryItem = {
   status: string;
   mission: string;
   expiration: Date;
+  internal_notes: string | null;
   market_value_per_unit: number;
   total_value: number;
   valuation_source: string | null;
+  value_researched_date: string | null;
   acquisition_method: string | null;
+  documents: {
+    id: string;
+    name: string;
+    type: string;
+    uploaded_by: string;
+    created_at: string;
+  }[] | null;
 };

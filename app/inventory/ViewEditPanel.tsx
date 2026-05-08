@@ -7,7 +7,6 @@ import Breadcrumbs, { BreadcrumbsItem } from "@atlaskit/breadcrumbs";
 import CustomButton from "./components/custom-button";
 import { SwappedPageHeader } from "./components/swapped-page-header";
 import CustomInlineEdit from "./components/CustomInlineEdit";
-import Textfield from '@atlaskit/textfield';
 
 import ScrollablePaginatedTable from "./components/scrollable-table";
 
@@ -18,13 +17,11 @@ import { fetchItemActivityLog, updateItemDetails } from "./utils/actions";
 import AddIcon from "@atlaskit/icon/core/add";
 import GlobeIcon from "@atlaskit/icon/core/globe";
 import EditIcon from "@atlaskit/icon/core/edit";
-import CashIcon from '@atlaskit/icon/core/cash';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   item: InventoryItem | null;
-  mode: "view" | "edit";
   setItems?: React.Dispatch<React.SetStateAction<InventoryItem[]>>;
 }
 
@@ -64,29 +61,27 @@ export default class ViewEditPanel extends React.Component<Props, State> {
   }
 
   componentDidUpdate(prevProps: Props) {
-    if (
-      prevProps.mode !== this.props.mode ||
-      prevProps.item !== this.props.item
-    ) {
+    if (prevProps.item !== this.props.item) {
       const item = this.props.item;
 
       this.setState({
-        isEditing: this.props.mode === "edit",
+        isEditing: false,
         form: item
           ? {
-              manufacturer: item.manufacturer || "",
-              reference_number: item.reference_number || "",
-              lot_number: item.lot_number || "",
-              unit_of_measure: item.unit_of_measure?.label || item.unit_of_measure || "",
-              typical_shelf_life: item.typical_shelf_life || "",
-              location: item.location || "",
-              internal_notes: item.internal_notes || "",
+              manufacturer: item.manufacturer ?? "",
+              reference_number: item.reference_number ?? "",
+              lot_number: item.lot_number ?? "",
+              unit_of_measure: item.unit_of_measure ?? "",
+              typical_shelf_life: item.typical_shelf_life ?? "",
+              location: item.location ?? "",
+              internal_notes: item.internal_notes ?? "",
             }
           : this.state.form,
       });
 
       this.loadActivity();
-    }  }
+    }
+  }
 
   // ---------------------------
   // ACTIVITY TAB LOGIC
@@ -135,7 +130,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     const expText = `EXP ${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
 
     return (
-      <CustomLozenge appearance="exp" isBold>
+      <CustomLozenge appearance="exp">
         {expText}
       </CustomLozenge>
     );
@@ -149,8 +144,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     if (!item) return null;
 
     const daysToExpiration = item.expiration
-      ? (item.expiration.getTime() - Date.now()) /
-        (1000 * 60 * 60 * 24)
+      ? (item.expiration.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       : null;
 
     const expirationSoon =
@@ -169,14 +163,15 @@ export default class ViewEditPanel extends React.Component<Props, State> {
         )}
 
         <div style={{ marginBottom: 24, display: "flex", gap: 12 }}>
-          <CustomButton iconBefore={<AddIcon label="" />}>
+          {/* FIX: Removed `label` prop from icon — icons are passed as JSX, not strings */}
+          <CustomButton iconBefore={<AddIcon />}>
             Add Items
           </CustomButton>
           <CustomButton
             backgroundColor="#A12654"
             hoverColor="#B63A69"
             textColor="#FFFFFF"
-            iconBefore={<GlobeIcon label="" />}
+            iconBefore={<GlobeIcon />}
           >
             Assign to Mission
           </CustomButton>
@@ -197,10 +192,8 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             Total Available
           </div>
 
-          <CustomLozenge appearance="unit_stat" isBold>
-            {`${item.quantity} ${(
-              item.unit_of_measure || "UNITS"
-            ).toUpperCase()}`}
+          <CustomLozenge appearance="unit_stat">
+            {`${item.quantity} ${(item.unit_of_measure ?? "UNITS").toUpperCase()}`}
           </CustomLozenge>
         </div>
 
@@ -213,10 +206,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             { key: "manufacturer", cells: ["Manufacturer", item.manufacturer] },
             { key: "reference", cells: ["Reference Number", item.reference_number] },
             { key: "lot", cells: ["Lot Number", item.lot_number] },
-            {
-              key: "unit",
-              cells: ["Unit of Measure", item.unit_of_measure?.label],
-            },
+            { key: "unit", cells: ["Unit of Measure", item.unit_of_measure] },
           ]}
           rowsPerPage={5}
         />
@@ -224,189 +214,175 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     );
   }
 
-// ---------------------------
-// DETAILS TAB
-// ---------------------------
-renderDetails() {
-  const { item } = this.props;
-  if (!item) return null;
+  // ---------------------------
+  // DETAILS TAB
+  // ---------------------------
+  renderDetails() {
+    const { item } = this.props;
+    if (!item) return null;
 
-  const { form, isEditing } = this.state;
+    const { form, isEditing } = this.state;
 
-  const updateField = (key: keyof State["form"], value: string) => {
-    this.setState({
-      form: {
-        ...form,
-        [key]: value,
-      },
-    });
-  };
+    const updateField = (key: keyof State["form"], value: string) => {
+      this.setState({
+        form: {
+          ...form,
+          [key]: value,
+        },
+      });
+    };
 
-  const renderField = (
-    label: string,
-    key: keyof State["form"],
-    placeholder?: string
-  ) => {
-    // =========================
-    // BULK EDIT MODE (ALL FIELDS)
-    // =========================
-    if (isEditing) {
+    const renderField = (
+      label: string,
+      key: keyof State["form"],
+      placeholder?: string
+    ) => {
+      if (isEditing) {
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
+              {label}
+            </div>
+            <input
+              value={form[key] ?? ""}
+              placeholder={placeholder}
+              onChange={(e) => updateField(key, e.target.value)}
+              style={{
+                padding: 8,
+                border: "1px solid #DFE1E6",
+                borderRadius: 6,
+                fontSize: 14,
+              }}
+            />
+          </div>
+        );
+      }
+
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
-            {label}
-          </div>
-
-          <input
-            value={form[key] ?? ""}
-            placeholder={placeholder}
-            onChange={(e) => updateField(key, e.target.value)}
-            style={{
-              padding: 8,
-              border: "1px solid #DFE1E6",
-              borderRadius: 6,
-              fontSize: 14,
-            }}
-          />
-        </div>
+        <CustomInlineEdit
+          label={label}
+          value={(form[key] as string) || (placeholder ?? "")}
+          onSave={async (v) => {
+            updateField(key, v);
+            await updateItemDetails(
+              item.id,
+              { [key]: v } as any,
+              "user@email.com"
+            );
+          }}
+        />
       );
-    }
+    };
 
-    // =========================
-    // INLINE MODE (DEFAULT)
-    // =========================
     return (
-      <CustomInlineEdit
-        label={label}
-        value={(form[key] as string) || (placeholder ?? "")}
-        onSave={async (v) => {
-          updateField(key, v);
+      <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 32 }}>
+        {/* MAIN GRID */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 24,
+          }}
+        >
+          {renderField("Manufacturing Company", "manufacturer", item.manufacturer ?? "")}
 
-          await updateItemDetails(
-            item.id,
-            {
-              [key]: v,
-            } as any,
-            "user@email.com"
-          );
-        }}
-      />
+          <div />
+
+          {renderField("Reference Number", "reference_number", item.reference_number ?? "")}
+
+          {renderField("Lot Number", "lot_number", item.lot_number ?? "")}
+
+          {renderField("Unit of Measure", "unit_of_measure", item.unit_of_measure ?? "")}
+
+          {renderField(
+            "Typical Shelf Life",
+            "typical_shelf_life",
+            item.typical_shelf_life ? `${item.typical_shelf_life} days` : ""
+          )}
+
+          {renderField("Location", "location", item.location ?? "")}
+        </div>
+
+        {/* META */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 24,
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
+              Created By
+            </div>
+            <div style={{ fontSize: 14, color: "#172B4D" }}>
+              {item.created_by ?? "-"}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
+              Created Date
+            </div>
+            <div style={{ fontSize: 14, color: "#172B4D" }}>
+              {new Date(item.created_at).toLocaleDateString()}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
+              Last Updated
+            </div>
+            <div style={{ fontSize: 14, color: "#172B4D" }}>
+              {new Date(item.updated_at).toLocaleString()}
+            </div>
+          </div>
+        </div>
+
+        {/* INTERNAL NOTES */}
+        <div>
+          <h4 style={{ marginBottom: 12 }}>Internal Notes</h4>
+
+          {isEditing ? (
+            <textarea
+              value={form.internal_notes}
+              placeholder={item.internal_notes ?? "Add notes..."}
+              onChange={(e) =>
+                this.setState({
+                  form: {
+                    ...form,
+                    internal_notes: e.target.value,
+                  },
+                })
+              }
+              style={{
+                width: "100%",
+                minHeight: 100,
+                padding: 12,
+                borderRadius: 8,
+                border: "1px solid #DFE1E6",
+                fontSize: 14,
+              }}
+            />
+          ) : (
+            <CustomInlineEdit
+              label="Internal Notes"
+              value={form.internal_notes || item.internal_notes || ""}
+              onSave={async (v) => {
+                updateField("internal_notes", v);
+                await updateItemDetails(
+                  item.id,
+                  { internal_notes: v },
+                  "user@email.com"
+                );
+              }}
+            />
+          )}
+        </div>
+      </div>
     );
-  };
+  }
 
-  return (
-    <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 32 }}>
-      {/* MAIN GRID */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 24,
-        }}
-      >
-        {renderField("Manufacturing Company", "manufacturer", item.manufacturer)}
-
-        <div />
-
-        {renderField("Reference Number", "reference_number", item.reference_number)}
-
-        {renderField("Lot Number", "lot_number", item.lot_number)}
-
-        {renderField(
-          "Unit of Measure",
-          "unit_of_measure",
-          item.unit_of_measure?.label || item.unit_of_measure
-        )}
-
-        {renderField(
-          "Typical Shelf Life",
-          "typical_shelf_life",
-          item.typical_shelf_life ? `${item.typical_shelf_life} days` : ""
-        )}
-
-        {renderField("Location", "location", item.location)}
-      </div>
-
-      {/* META */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 24,
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
-            Created By
-          </div>
-          <div style={{ fontSize: 14, color: "#172B4D" }}>
-            {item.created_by || "-"}
-          </div>
-        </div>
-
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
-            Created Date
-          </div>
-          <div style={{ fontSize: 14, color: "#172B4D" }}>
-            {new Date(item.created_at).toLocaleDateString()}
-          </div>
-        </div>
-
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
-            Last Updated
-          </div>
-          <div style={{ fontSize: 14, color: "#172B4D" }}>
-            {new Date(item.updated_at).toLocaleString()}
-          </div>
-        </div>
-      </div>
-
-      {/* INTERNAL NOTES */}
-      <div>
-        <h4 style={{ marginBottom: 12 }}>Internal Notes</h4>
-
-        {isEditing ? (
-          <textarea
-            value={form.internal_notes}
-            placeholder={item.internal_notes || "Add notes..."}
-            onChange={(e) =>
-              this.setState({
-                form: {
-                  ...form,
-                  internal_notes: e.target.value,
-                },
-              })
-            }
-            style={{
-              width: "100%",
-              minHeight: 100,
-              padding: 12,
-              borderRadius: 8,
-              border: "1px solid #DFE1E6",
-              fontSize: 14,
-            }}
-          />
-        ) : (
-          <CustomInlineEdit
-            label="Internal Notes"
-            value={form.internal_notes || item.internal_notes || ""}
-            onSave={async (v) => {
-              updateField("internal_notes", v);
-
-              await updateItemDetails(
-                item.id,
-                { internal_notes: v },
-                "user@email.com"
-              );
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
   // ---------------------------
   // DOCUMENTATION TAB
   // ---------------------------
@@ -429,7 +405,7 @@ renderDetails() {
       <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 32 }}>
         {/* Valuation */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-          <Field iconBefore={<CashIcon label="" />} label="Total Value" value={item.total_value ? `$${item.total_value.toLocaleString()}` : "-"} />
+          <Field label="Total Value" value={item.total_value ? `$${item.total_value.toLocaleString()}` : "-"} />
           <Field label="Market Value Per Unit" value={item.market_value_per_unit ? `$${item.market_value_per_unit}` : "-"} />
           <Field label="Date Value Researched" value={item.value_researched_date ? new Date(item.value_researched_date).toLocaleDateString() : "-"} />
           <Field label="Valuation Source" value={item.valuation_source} />
@@ -457,7 +433,7 @@ renderDetails() {
               { key: "uploaded_by", header: "Uploaded By", width: 100 },
               { key: "date", header: "Date", width: 100 },
             ]}
-            rows={(item.documents || []).map((doc: any) => ({
+            rows={(item.documents ?? []).map((doc: any) => ({
               key: doc.id,
               cells: [
                 doc.name,
@@ -489,14 +465,14 @@ renderDetails() {
         title={
           <div style={{ borderTop: "1px solid #DFE1E6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
-              <CustomLozenge appearance="stat" isBold>
+              <CustomLozenge appearance="stat">
                 IN STORAGE
               </CustomLozenge>
               {this.renderExpirationLozenge(item.expiration)}
             </div>
 
-            <CustomLozenge appearance="unit_stat" isBold>
-              {item.quantity} {item.unit_of_measure?.label || "UNITS"}
+            <CustomLozenge appearance="unit_stat">
+              {item.quantity} {item.unit_of_measure ?? "UNITS"}
             </CustomLozenge>
           </div>
         }
@@ -515,7 +491,6 @@ renderDetails() {
                   if (!item) return;
 
                   await updateItemDetails(item.id, this.state.form, "user@email.com");
-
                   this.setState({ isEditing: false });
                 }}
               >
@@ -525,20 +500,22 @@ renderDetails() {
               <CustomButton
                 backgroundColor="#422670"
                 textColor="#FFFFFF"
-                iconBefore={<EditIcon label="" />}
+                iconBefore={<EditIcon />}
                 onClick={() => this.setState({ isEditing: true })}
               >
                 Edit Item
               </CustomButton>
             )}
           </div>
-        }      >
+        }
+      >
         <SwappedPageHeader
           title={item.item_description}
           breadcrumbs={
             <Breadcrumbs>
-              <BreadcrumbsItem text={item.reference_number} />
-              <BreadcrumbsItem text={item.location} />
+              {/* FIX: `?? ""` ensures string, not string | null */}
+              <BreadcrumbsItem text={item.reference_number ?? ""} />
+              <BreadcrumbsItem text={item.location ?? ""} />
             </Breadcrumbs>
           }
         />
