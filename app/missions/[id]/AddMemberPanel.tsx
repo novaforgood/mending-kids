@@ -6,6 +6,7 @@ import Form, { Field, FormFooter } from "@atlaskit/form";
 import Textfield from "@atlaskit/textfield";
 import SidePanel, { PanelLabel } from "@/components/SidePanel";
 import { addMissionMember } from "../actions";
+import { useAuthUser } from "@/app/hooks/authUser";
 
 type Props = {
   isOpen: boolean;
@@ -20,9 +21,35 @@ type FormValues = {
   role: string;
 };
 
+const overlayStyle = {
+  position: "fixed" as const,
+  top: 0,
+  left: 0,
+  width: "100%",
+  height: "100%",
+  backgroundColor: "rgba(0,0,0,0.4)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 1000,
+};
+
+const popupStyle = {
+  backgroundColor: "white",
+  color: "black",
+  padding: "20px",
+  borderRadius: "8px",
+  boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+  textAlign: "center" as const,
+  minWidth: "300px",
+};
+
 export default function AddMemberPanel({ isOpen, missionId, onClose, onAdded }: Props) {
   const [formFilled, setFormFilled] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [popupMessage, setPopupMessage] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
+  const { user, loading } = useAuthUser();
 
   useEffect(() => {
     if (!isOpen) setFormFilled(false);
@@ -30,6 +57,13 @@ export default function AddMemberPanel({ isOpen, missionId, onClose, onAdded }: 
 
   const handleSubmit = async (values: FormValues) => {
     setSaving(true);
+ if (user?.user_metadata?.role !== "admin") {
+  setPopupMessage("You do not have permission to add members.");
+  setShowPopup(true);
+  setSaving(false);
+  return;
+}
+
     try {
       await addMissionMember({
         mission_id: missionId,
@@ -40,11 +74,12 @@ export default function AddMemberPanel({ isOpen, missionId, onClose, onAdded }: 
       });
       onAdded();
       onClose();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSaving(false);
-    }
+    } catch (err: any) {
+  setPopupMessage(err.message || "You do not have permission to add members.");
+  setShowPopup(true);
+} finally {
+  setSaving(false);
+}
   };
 
   return (
@@ -117,6 +152,16 @@ export default function AddMemberPanel({ isOpen, missionId, onClose, onAdded }: 
           </form>
         )}
       </Form>
+
+
+      {showPopup && (
+  <div style={overlayStyle}>
+    <div style={popupStyle}>
+      <p>{popupMessage}</p>
+      <button onClick={() => setShowPopup(false)}>OK</button>
+    </div>
+  </div>
+)}
     </SidePanel>
   );
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import AddMemberPanel from "./AddMemberPanel";
 import EditMissionPanel from "./EditMissionPanel";
 import { updateMissionItem } from "../actions";
+import { useAuthUser } from "@/app/hooks/authUser";
 
 type InventoryItem = {
   id: number;
@@ -65,6 +66,28 @@ function getCategoryAbbr(category: string) {
   return map[category] ?? category.slice(0, 3).toUpperCase();
 }
 
+const overlayStyle = {
+  position: "fixed" as const,
+  top: 0,
+  left: 0,
+  width: "100%",
+  height: "100%",
+  backgroundColor: "rgba(0, 0, 0, 0.4)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 1000,
+};
+
+const popupStyle = {
+  backgroundColor: "white",
+  padding: "20px",
+  borderRadius: "8px",
+  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+  textAlign: "center" as const,
+  minWidth: "300px",
+};
+
 function formatDateRange(start?: string | null, end?: string | null) {
   if (!start && !end) return null;
   const fmt = (d: string) => {
@@ -82,19 +105,31 @@ function ItemsTab({ items }: { items: MissionItem[] }) {
   const [quantities, setQuantities] = useState<Record<number, number>>(
     Object.fromEntries(items.map((r) => [r.id, r.quantity_used ?? 0]))
   );
+  const [popupMessage, setPopupMessage] = useState("");
+const [showPopup, setShowPopup] = useState(false);
+const { user } = useAuthUser();
 
   const handleIncrement = async (id: number) => {
     const next = (quantities[id] ?? 0) + 1;
+
+    if (user?.user_metadata?.role !== "admin") {
+    setPopupMessage("You do not have permission to update items.");
+    setShowPopup(true);
+    return;
+  }
+
     setQuantities((prev) => ({ ...prev, [id]: next }));
     try {
       await updateMissionItem(id, next);
-    } catch (err) {
-      console.error(err);
-      setQuantities((prev) => ({ ...prev, [id]: next - 1 }));
-    }
+    } catch (err: any) {
+  setPopupMessage(err.message || "You do not have permission to update items.");
+  setShowPopup(true);
+  setQuantities((prev) => ({ ...prev, [id]: next - 1 }));
+}
   };
 
   return (
+    <>
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
@@ -168,8 +203,18 @@ function ItemsTab({ items }: { items: MissionItem[] }) {
           )}
         </tbody>
       </table>
+</div>
+
+{showPopup && (
+  <div style={overlayStyle}>
+    <div style={popupStyle}>
+      <p>{popupMessage}</p>
+      <button onClick={() => setShowPopup(false)}>OK</button>
     </div>
-  );
+  </div>
+)}
+</>
+);
 }
 
 function PeopleTab({

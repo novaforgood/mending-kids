@@ -16,6 +16,8 @@ import AddItemPanel from "./utils/add-item-panel";
 import { InventoryItem } from "./types";
 import ViewEditPanel from "./utils/ViewEditPanel";
 
+import { useAuthUser } from "../hooks/authUser";
+
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +33,8 @@ export default function InventoryPage() {
 
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [panelMode, setPanelMode] = useState<"view" | "edit">("view");
+
+  const { user, loading } = useAuthUser();
 
   useEffect(() => {
     loadInventory();
@@ -103,14 +107,14 @@ export default function InventoryPage() {
       { content: `$${item.total_value.toFixed(2)}` },
       {
         content: item.valuation_source ? (
-          <a href={item.valuation_source} target="_blank" rel="noreferrer" style={{ color: "#0052CC", fontSize: 13 }}>
+          <a href={item.valuation_source} target="_blank" rel="noreferrer" style={{ color: "#6CC3FF", fontSize: 13 }}>
             {item.valuation_source}
           </a>
         ) : (
-          <span style={{ color: "#6B778C" }}>—</span>
+          <span style={{ color: "#9FADBC" }}>—</span>
         ),
       },
-      { content: item.acquisition_method ?? <span style={{ color: "#6B778C" }}>—</span> },
+      { content: item.acquisition_method ?? <span style={{ color: "#9FADBC" }}>—</span> },
       {
         content: (
           <div style={{ display: "flex", gap: 8 }}>
@@ -132,15 +136,15 @@ export default function InventoryPage() {
   }));
 
   return (
-    <div style={{ padding: 32 }}>
+    <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0 }}>Inventory</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: "#F4F5F7" }}>Inventory</h1>
         <Button appearance="primary" iconBefore={AddIcon} onClick={() => setIsPanelOpen(true)}>
           Add Item
         </Button>
       </div>
 
-      {error && <div style={{ color: "#DE350B", marginBottom: 12 }}>{error}</div>}
+      {error && <div style={{ color: "#FF8B73", marginBottom: 12 }}>{error}</div>}
 
       <DynamicTable
         head={head}
@@ -153,7 +157,9 @@ export default function InventoryPage() {
         }}
         rowsPerPage={10}
         defaultPage={1}
-        emptyView={<div style={{ padding: 16, textAlign: "center", color: "#6B778C" }}>No inventory items yet</div>}
+        emptyView={
+          <div style={{ padding: 16, textAlign: "center", color: "#9FADBC" }}>No inventory items yet</div>
+        }
       />
 
       {/* View / Edit Panel */}
