@@ -32,7 +32,7 @@ if (!role) {
   console.log("User metadata:", data.user?.user_metadata);
 }
 
-window.location.href = "/missions";
+window.location.href = "/dashboard";
 };
 
   return (

@@ -30,6 +30,7 @@
     "@atlaskit/tag": "^14.5.2",
     "@atlaskit/textfield": "^8.3.2",
     "@atlassian/aui": "^10.1.1",
+    "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.90.1",
     "atlaskit": "^0.0.1-security",
     "enhanced-resolve": "^5.20.1",
