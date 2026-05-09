@@ -6,6 +6,7 @@ import SectionMessage from "@atlaskit/section-message";
 import Breadcrumbs, { BreadcrumbsItem } from "@atlaskit/breadcrumbs";
 import CustomButton from "./components/custom-button";
 import CustomInlineEdit from "./components/CustomInlineEdit";
+import { SwappedPageHeader } from "./components/swapped-page-header";
 
 import ScrollablePaginatedTable from "./components/scrollable-table";
 
@@ -17,7 +18,7 @@ import AddIcon from "@atlaskit/icon/core/add";
 import GlobeIcon from "@atlaskit/icon/core/globe";
 import EditIcon from "@atlaskit/icon/core/edit";
 
-import {State, Props, ActivityEntry, DocumentEntry, UpdateItemDetailsPayload} from "./types";
+import {State, Props, ActivityEntry, ActivityRow, DocumentEntry, UpdateItemDetailsPayload} from "./utils/types";
 
 export default class ViewEditPanel extends React.Component<Props, State> {
   state: State = {
@@ -50,7 +51,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
               manufacturer: item.manufacturer ?? "",
               reference_number: item.reference_number ?? "",
               lot_number: item.lot_number ?? "",
-              unit_of_measure: item.unit_of_measure?.label || item.unit_of_measure || "",
+              unit_of_measure: item.unit_of_measure || "",
               typical_shelf_life: item.typical_shelf_life ?? "",
               location: item.location ?? "",
               internal_notes: item.internal_notes ?? "",
@@ -71,7 +72,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
     try {
       const data = await fetchItemActivityLog(item.id);
-      const activity = data.map((entry: ActivityEntry) => {
+      const activity: ActivityRow[] = data.map((entry: ActivityEntry) => {
         let formattedQuantity = "-";
 
         if (entry.quantity != null) {
@@ -142,14 +143,14 @@ export default class ViewEditPanel extends React.Component<Props, State> {
         )}
 
         <div style={{ marginBottom: 24, display: "flex", gap: 12 }}>
-          <CustomButton iconBefore={<AddIcon />}>
+          <CustomButton iconBefore={<AddIcon label="Add Items"/>}>
             Add Items
           </CustomButton>
           <CustomButton
             backgroundColor="#A12654"
             hoverColor="#B63A69"
             textColor="#FFFFFF"
-            iconBefore={<GlobeIcon />}
+            iconBefore={<GlobeIcon label="Assign to Mission"/>}
           >
             Assign to Mission
           </CustomButton>
@@ -184,7 +185,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             { key: "manufacturer", cells: ["Manufacturer", item.manufacturer ?? ""] },
             { key: "reference", cells: ["Reference Number", item.reference_number ?? ""] },
             { key: "lot", cells: ["Lot Number", item.lot_number ?? ""] },
-            { key: "unit", cells: ["Unit of Measure", item.unit_of_measure?.label ?? ""], }
+            { key: "unit", cells: ["Unit of Measure", item.unit_of_measure ?? ""], }
           ]}
           rowsPerPage={5}
         />
@@ -270,7 +271,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
           {renderField("Lot Number", "lot_number", item.lot_number ?? "")}
 
-          {renderField("Unit of Measure", "unit_of_measure", item.unit_of_measure?.label || item.unit_of_measure || "")}
+          {renderField("Unit of Measure", "unit_of_measure", item.unit_of_measure || "")}
 
           {renderField(
             "Typical Shelf Life",
@@ -386,7 +387,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
           <Field label="Total Value" value={item.total_value ? `$${item.total_value.toLocaleString()}` : "-"} />
           <Field label="Market Value Per Unit" value={item.market_value_per_unit ? `$${item.market_value_per_unit}` : "-"} />
           <Field label="Date Value Researched" value={item.value_researched_date ? new Date(item.value_researched_date).toLocaleDateString() : "-"} />
-          <Field label="Valuation Source" value={item.valuation_source} />
+          <Field label="Valuation Source" value={item.valuation_source ?? "-"} />
         </div>
 
         {/* Documents */}
@@ -478,7 +479,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
               <CustomButton
                 backgroundColor="#422670"
                 textColor="#FFFFFF"
-                iconBefore={<EditIcon />}
+                iconBefore={<EditIcon label="Edit Item"/>}
                 onClick={() => this.setState({ isEditing: true })}
               >
                 Edit Item

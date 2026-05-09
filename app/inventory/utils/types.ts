@@ -56,7 +56,7 @@ export interface Props {
 export interface State {
   isEditing: boolean;
   selectedTab: "Overview" | "Activity" | "Documentation" | "Details";
-  activity: ActivityEntry[];
+  activity: ActivityRow[];
   form: UpdateItemDetailsPayload;
 }
 
@@ -88,3 +88,12 @@ export type UpdateItemDetailsPayload = Partial<{
   location: string;
   internal_notes: string;
 }>;
+
+export type ActivityRow = {
+  key: string;
+  activity: string;
+  quantity: string;
+  reason: string;
+  user: string;
+  timestamp: string;
+};

@@ -5,7 +5,7 @@ import Button from "@atlaskit/button/new";
 import Textfield from "@atlaskit/textfield";
 import CameraIcon from "@atlaskit/icon/core/camera";
 import LinkIcon from "@atlaskit/icon/core/link";
-import { InventoryPayload } from "../actions";
+import type { InventoryPayload } from "../utils/types";
 import ValuationSuggestedSources from "./ValuationSuggestedSources";
 
 type AddItemPanelProps = {

@@ -226,7 +226,7 @@ export default function InventoryPage() {
         isOpen={isViewPanelOpen}
         onClose={() => setIsViewPanelOpen(false)}
         item={selectedItem}
-        mode={panelMode}
+        // mode={panelMode}
         setItems={setItems}
       />
 

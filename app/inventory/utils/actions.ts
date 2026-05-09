@@ -11,24 +11,26 @@ async function logInventoryChange(
   changes?: Record<string, { old: string; new: string }>
 ) {
   let description = itemDescription || "";
+
   if (changes) {
     const changeDescriptions = Object.entries(changes).map(
-      ([field, { old: oldVal, new: newVal }]) => `${field}: "${oldVal}" → "${newVal}"`
+      ([field, { old: oldVal, new: newVal }]) =>
+        `${field}: "${oldVal}" → "${newVal}"`
     );
-    description += changeDescriptions.length > 0 
-      ? ` (${changeDescriptions.join(", ")})`
-      : "";
+
+    description +=
+      changeDescriptions.length > 0
+        ? ` (${changeDescriptions.join(", ")})`
+        : "";
   }
 
-  await supabaseServer
-    .from("activity_log")
-    .insert({
-      action_type: type,
-      performed_by: user,
-      description: description,
-      item_name: itemDescription,
-      inventory_id: itemId,
-    });
+  await supabaseServer.from("activity_log").insert({
+    action_type: type,
+    performed_by: user,
+    description,
+    item_name: itemDescription,
+    inventory_id: itemId,
+  });
 }
 
 /* Fetch all inventory items */
@@ -50,14 +52,11 @@ export async function fetchInventory() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
+  if (error) throw new Error(error.message);
   return data;
 }
 
-/** Normalize to 2 decimal places before send (DB should use numeric — see sql/inventory_money_numeric.sql). */
+/** Normalize to 2 decimal places before send */
 function money2(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.round(n * 100) / 100;
@@ -74,11 +73,14 @@ export async function addItem(payload: InventoryPayload, userEmail: string) {
     .select()
     .single();
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
-  await logInventoryChange("added", userEmail, data.id, payload.item_description);
+  await logInventoryChange(
+    "added",
+    userEmail,
+    data.id,
+    payload.item_description
+  );
 }
 
 /* Update documentation fields on an existing item */
@@ -91,7 +93,9 @@ export async function updateItemDocumentation(
 ) {
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
-    .select("quantity, item_description, market_value_per_unit, valuation_source, acquisition_method")
+    .select(
+      "quantity, item_description, market_value_per_unit, valuation_source, acquisition_method"
+    )
     .eq("id", id)
     .single();
 
@@ -117,14 +121,23 @@ export async function updateItemDocumentation(
     id,
     oldItem.item_description,
     {
-      market_value_per_unit: { old: String(oldItem.market_value_per_unit), new: String(marketValuePerUnit) },
-      valuation_source: { old: oldItem.valuation_source || "", new: valuationSource },
-      acquisition_method: { old: oldItem.acquisition_method || "", new: acquisitionMethod },
+      market_value_per_unit: {
+        old: String(oldItem.market_value_per_unit),
+        new: String(marketValuePerUnit),
+      },
+      valuation_source: {
+        old: oldItem.valuation_source || "",
+        new: valuationSource,
+      },
+      acquisition_method: {
+        old: oldItem.acquisition_method || "",
+        new: acquisitionMethod,
+      },
     }
   );
 }
 
-// delete item
+/* Delete item */
 export async function deleteItem(id: number, userEmail: string) {
   const { data: item, error: fetchError } = await supabaseServer
     .from("inventory")
@@ -139,9 +152,7 @@ export async function deleteItem(id: number, userEmail: string) {
     .delete()
     .eq("id", id);
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
   await logInventoryChange("deleted", userEmail, id, item.item_description);
 }
@@ -165,7 +176,6 @@ export async function updateItemQuantity(
     total_value: newQuantity * oldItem.market_value_per_unit,
   };
 
-  // Archive if quantity is 0
   if (newQuantity === 0) {
     updates.status = "archived";
   }
@@ -183,12 +193,23 @@ export async function updateItemQuantity(
     id,
     oldItem.item_description,
     {
-      quantity: { old: String(oldItem.quantity), new: String(newQuantity) },
-      ...(newQuantity === 0 ? { status: { old: oldItem.status, new: "archived" } } : {}),
+      quantity: {
+        old: String(oldItem.quantity),
+        new: String(newQuantity),
+      },
+      ...(newQuantity === 0
+        ? {
+            status: {
+              old: oldItem.status,
+              new: "archived",
+            },
+          }
+        : {}),
     }
   );
 }
 
+/* Update item details (FIXED VERSION) */
 export async function updateItemDetails(
   id: number,
   payload: UpdateItemDetailsPayload,
@@ -215,46 +236,63 @@ export async function updateItemDetails(
 
   if (error) throw new Error(error.message);
 
-  await logInventoryChange("edited", userEmail, id, oldItem.item_description, {
-    manufacturer:
-      payload.manufacturer !== undefined
-        ? { old: oldItem.manufacturer, new: payload.manufacturer }
-        : undefined,
+  // SAFE CHANGE BUILDER (no undefined values allowed)
+  const changes: Record<string, { old: string; new: string }> = {};
 
-    reference_number:
-      payload.reference_number !== undefined
-        ? { old: oldItem.reference_number, new: payload.reference_number }
-        : undefined,
+  if (payload.manufacturer !== undefined) {
+    changes.manufacturer = {
+      old: oldItem.manufacturer || "",
+      new: payload.manufacturer,
+    };
+  }
 
-    lot_number:
-      payload.lot_number !== undefined
-        ? { old: oldItem.lot_number, new: payload.lot_number }
-        : undefined,
+  if (payload.reference_number !== undefined) {
+    changes.reference_number = {
+      old: oldItem.reference_number || "",
+      new: payload.reference_number,
+    };
+  }
 
-    unit_of_measure:
-      payload.unit_of_measure !== undefined
-        ? { old: oldItem.unit_of_measure, new: payload.unit_of_measure }
-        : undefined,
+  if (payload.lot_number !== undefined) {
+    changes.lot_number = {
+      old: oldItem.lot_number || "",
+      new: payload.lot_number,
+    };
+  }
 
-    typical_shelf_life:
-      payload.typical_shelf_life !== undefined
-        ? {
-            old: oldItem.typical_shelf_life,
-            new: payload.typical_shelf_life,
-          }
-        : undefined,
+  if (payload.unit_of_measure !== undefined) {
+    changes.unit_of_measure = {
+      old: oldItem.unit_of_measure || "",
+      new: payload.unit_of_measure,
+    };
+  }
 
-    location:
-      payload.location !== undefined
-        ? { old: oldItem.location, new: payload.location }
-        : undefined,
+  if (payload.typical_shelf_life !== undefined) {
+    changes.typical_shelf_life = {
+      old: oldItem.typical_shelf_life || "",
+      new: payload.typical_shelf_life,
+    };
+  }
 
-    internal_notes:
-      payload.internal_notes !== undefined
-        ? {
-            old: oldItem.internal_notes || "",
-            new: payload.internal_notes || "",
-          }
-        : undefined,
-  });
+  if (payload.location !== undefined) {
+    changes.location = {
+      old: oldItem.location || "",
+      new: payload.location,
+    };
+  }
+
+  if (payload.internal_notes !== undefined) {
+    changes.internal_notes = {
+      old: oldItem.internal_notes || "",
+      new: payload.internal_notes || "",
+    };
+  }
+
+  await logInventoryChange(
+    "edited",
+    userEmail,
+    id,
+    oldItem.item_description,
+    changes
+  );
 }
