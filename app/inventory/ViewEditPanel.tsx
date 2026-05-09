@@ -51,7 +51,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
               manufacturer: item.manufacturer ?? "",
               reference_number: item.reference_number ?? "",
               lot_number: item.lot_number ?? "",
-              unit_of_measure: item.unit_of_measure ?? "",
+              unit_of_measure: item.unit_of_measure?.label || item.unit_of_measure || "",
               typical_shelf_life: item.typical_shelf_life ?? "",
               location: item.location ?? "",
               internal_notes: item.internal_notes ?? "",
@@ -143,7 +143,6 @@ export default class ViewEditPanel extends React.Component<Props, State> {
         )}
 
         <div style={{ marginBottom: 24, display: "flex", gap: 12 }}>
-          {/* FIX: Removed `label` prop from icon — icons are passed as JSX, not strings */}
           <CustomButton iconBefore={<AddIcon />}>
             Add Items
           </CustomButton>
@@ -186,7 +185,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             { key: "manufacturer", cells: ["Manufacturer", item.manufacturer ?? ""] },
             { key: "reference", cells: ["Reference Number", item.reference_number ?? ""] },
             { key: "lot", cells: ["Lot Number", item.lot_number ?? ""] },
-            { key: "unit", cells: ["Unit of Measure", item.unit_of_measure ?? ""] },
+            { key: "unit", cells: ["Unit of Measure", item.unit_of_measure?.label ?? ""], }
           ]}
           rowsPerPage={5}
         />
@@ -272,7 +271,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
           {renderField("Lot Number", "lot_number", item.lot_number ?? "")}
 
-          {renderField("Unit of Measure", "unit_of_measure", item.unit_of_measure ?? "")}
+          {renderField("Unit of Measure", "unit_of_measure", item.unit_of_measure?.label || item.unit_of_measure || "")}
 
           {renderField(
             "Typical Shelf Life",
@@ -493,7 +492,6 @@ export default class ViewEditPanel extends React.Component<Props, State> {
           title={item.item_description}
           breadcrumbs={
             <Breadcrumbs>
-              {/* FIX: `?? ""` ensures string, not string | null */}
               <BreadcrumbsItem text={item.reference_number ?? ""} />
               <BreadcrumbsItem text={item.location ?? ""} />
             </Breadcrumbs>
