@@ -1,7 +1,7 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabase/server";
-import { InventoryPayload, ChangeType } from "./types";
+import { InventoryPayload, ChangeType, UpdateItemDetailsPayload } from "./types";
 
 async function logInventoryChange(
   type: ChangeType,

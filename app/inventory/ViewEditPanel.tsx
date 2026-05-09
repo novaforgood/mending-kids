@@ -5,20 +5,19 @@ import CustomLozenge from "./components/custom-lozenge";
 import SectionMessage from "@atlaskit/section-message";
 import Breadcrumbs, { BreadcrumbsItem } from "@atlaskit/breadcrumbs";
 import CustomButton from "./components/custom-button";
-import { SwappedPageHeader } from "./components/swapped-page-header";
 import CustomInlineEdit from "./components/CustomInlineEdit";
 
 import ScrollablePaginatedTable from "./components/scrollable-table";
 
 import { InventoryItem } from "./utils/types";
 import { SidePanel } from "./components/SidePanel";
-import { fetchItemActivityLog, updateItemDetails, UpdateItemDetailsPayload } from "./utils/actions";
+import { fetchItemActivityLog, updateItemDetails } from "./utils/actions";
 
 import AddIcon from "@atlaskit/icon/core/add";
 import GlobeIcon from "@atlaskit/icon/core/globe";
 import EditIcon from "@atlaskit/icon/core/edit";
 
-import {State, Props, ActivityEntry, DocumentEntry} from "./types";
+import {State, Props, ActivityEntry, DocumentEntry, UpdateItemDetailsPayload} from "./types";
 
 export default class ViewEditPanel extends React.Component<Props, State> {
   state: State = {
