@@ -394,6 +394,18 @@ export default function MissionDetailClient({ mission, items, members }: Props) 
             ← Back to Missions
           </Link>
           <div className="flex items-center gap-2">
+            <a
+              href={`/api/missions/${mission.id}/export?format=csv`}
+              className="rounded border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Export CSV
+            </a>
+            <a
+              href={`/api/missions/${mission.id}/export?format=pdf`}
+              className="rounded border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Export PDF
+            </a>
             <Link
               href={`/missions/${mission.id}/add-items`}
               className="flex items-center gap-1 rounded bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800"

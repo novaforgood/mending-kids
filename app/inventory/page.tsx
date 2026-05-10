@@ -9,6 +9,7 @@ import { IconButton } from "@atlaskit/button/new";
 import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from "@atlaskit/icon/core/show-more-horizontal";
+import DownloadIcon from "@atlaskit/icon/core/arrow-down";
 
 import { fetchInventory, addItem, updateItemDocumentation } from "./utils/actions";
 import DocumentationModal from "./components/documentation-modal";
@@ -32,6 +33,27 @@ export default function InventoryPage() {
   const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("ASC");
 
   const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  async function handleExport(format: "csv" | "pdf") {
+    setIsExporting(true);
+    try {
+      const res = await fetch(`/api/inventory/export?format=${format}`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `inventory-${Date.now()}.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError(`Failed to export ${format.toUpperCase()}`);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [panelMode, setPanelMode] = useState<"view" | "edit">("view");
 
@@ -171,9 +193,27 @@ export default function InventoryPage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <h1 style={{ fontSize: 24, fontWeight: 600 }}>Inventory</h1>
-        <CustomButton backgroundColor="#422670" textColor="#FFFFFF" iconBefore={<AddIcon label="" />} onClick={() => setIsPanelOpen(true)}>
-          Add Item
-        </CustomButton>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button
+            appearance="subtle"
+            iconBefore={DownloadIcon}
+            isDisabled={isExporting}
+            onClick={() => handleExport("csv")}
+          >
+            Export CSV
+          </Button>
+          <Button
+            appearance="subtle"
+            iconBefore={DownloadIcon}
+            isDisabled={isExporting}
+            onClick={() => handleExport("pdf")}
+          >
+            Export PDF
+          </Button>
+          <CustomButton backgroundColor="#422670" textColor="#FFFFFF" iconBefore={<AddIcon label="" />} onClick={() => setIsPanelOpen(true)}>
+            Add Item
+          </CustomButton>
+        </div>
       </div>
 
       {/* Tabs */}

@@ -129,6 +129,19 @@ export default function Header() {
                     <span>Inventory</span>
                   </button>
                 </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSidebarOpen(false)
+                      router.push("/audit-report")
+                    }}
+                    className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-gray-100"
+                  >
+                    <DashboardIcon label="Audit Report" />
+                    <span>Audit Report</span>
+                  </button>
+                </li>
               </ul>
             </nav>
           </div>
