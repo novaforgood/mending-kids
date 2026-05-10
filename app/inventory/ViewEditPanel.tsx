@@ -499,7 +499,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
         />
 
         {/* Tabs */}
-        <div style={{ display: "flex", borderBottom: "1px solid #DFE1E6", gap: 16, paddingTop: 12 }}>
+        <div style={{ display: "flex", width: '100%', borderBottom: "1px solid #DFE1E6", gap: 32, paddingTop: 12 }}>
           {["Overview", "Activity", "Documentation", "Details"].map((tab) => (
             <div
               key={tab}

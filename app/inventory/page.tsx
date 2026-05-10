@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import CustomDynamicTable from "./components/custom-dynamic-table";
 import DynamicTable from "@atlaskit/dynamic-table";
 import Button from "@atlaskit/button/new/";
 import CustomButton from "./components/custom-button";
@@ -138,6 +139,7 @@ export default function InventoryPage() {
   const createRows = (data: InventoryItem[]) =>
     data.map((item) => ({
       key: String(item.id),
+      item,
       cells: [
         { content: <Cell>{item.item_description}</Cell> },
         { content: <Cell>{item.manufacturer}</Cell> },
@@ -202,7 +204,7 @@ export default function InventoryPage() {
       {error && <div style={{ color: "#DE350B" }}>{error}</div>}
 
       <div style={{ overflowX: "auto" }}>
-        <DynamicTable
+        <CustomDynamicTable
           head={head}
           rows={createRows(selectedTab === "active" ? activeItems : archivedItems)}
           sortKey={sortKey ?? undefined}
@@ -216,17 +218,25 @@ export default function InventoryPage() {
           isFixedSize
           emptyView={
             <div style={{ padding: 16, textAlign: "center", color: "#6B778C" }}>
-              {selectedTab === "active" ? "No active items" : "No archived items"}
+              {selectedTab === "active"
+                ? "No active items"
+                : "No archived items"}
             </div>
           }
-        />
+
+          onRowClick={(item) => {
+            setSelectedItem(item);
+            setPanelMode("view");
+            setIsViewPanelOpen(true);
+          }}
+
+        />      
       </div>
 
       <ViewEditPanel
         isOpen={isViewPanelOpen}
         onClose={() => setIsViewPanelOpen(false)}
         item={selectedItem}
-        // mode={panelMode}
         setItems={setItems}
       />
 
