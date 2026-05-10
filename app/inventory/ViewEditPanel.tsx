@@ -42,10 +42,13 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
   componentDidUpdate(prevProps: Props) {
     if (prevProps.item !== this.props.item) {
+
       const item = this.props.item;
 
       this.setState({
         isEditing: false,
+        selectedTab: "Overview",
+
         form: item
           ? {
               manufacturer: item.manufacturer ?? "",
@@ -58,7 +61,6 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             }
           : this.state.form,
       });
-
       this.loadActivity();
     }
   }

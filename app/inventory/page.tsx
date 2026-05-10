@@ -98,7 +98,7 @@ export default function InventoryPage() {
       { key: "manufacturer", content: "Manufacturer", isSortable: true, width: 150 },
       { key: "reference_number", content: "Reference Number", isSortable: true, width: 150 },
       { key: "quantity", content: "Quantity", isSortable: true, width: 100 },
-      { key: "status", content: "Status", width: 120 },
+      // { key: "status", content: "Status", width: 120 },
       { key: "location", content: "Location", width: 120 },
       { key: "expiration", content: "Expiration", isSortable: true, width: 140 },
       { key: "actions", content: "Actions", width: 120 },
@@ -146,7 +146,7 @@ export default function InventoryPage() {
         { content: <Cell>{item.manufacturer}</Cell> },
         { content: <Cell>{item.reference_number}</Cell> },
         { content: <Cell><CustomLozenge>{item.quantity}</CustomLozenge></Cell> },
-        { content: <Cell>{item.status}</Cell> },
+        // { content: <Cell>{item.status}</Cell> },
         { content: <Cell>{item.location}</Cell> },
         { content: <Cell>{item.expiration.toLocaleDateString()}</Cell> },
         {
