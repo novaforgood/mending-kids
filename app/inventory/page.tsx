@@ -6,6 +6,7 @@ import DynamicTable from "@atlaskit/dynamic-table";
 import Button from "@atlaskit/button/new/";
 import CustomButton from "./components/custom-button";
 import { IconButton } from "@atlaskit/button/new";
+import CustomLozenge from "./components/custom-lozenge";
 
 import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
@@ -144,7 +145,7 @@ export default function InventoryPage() {
         { content: <Cell>{item.item_description}</Cell> },
         { content: <Cell>{item.manufacturer}</Cell> },
         { content: <Cell>{item.reference_number}</Cell> },
-        { content: <Cell>{item.quantity}</Cell> },
+        { content: <Cell><CustomLozenge>{item.quantity}</CustomLozenge></Cell> },
         { content: <Cell>{item.status}</Cell> },
         { content: <Cell>{item.location}</Cell> },
         { content: <Cell>{item.expiration.toLocaleDateString()}</Cell> },

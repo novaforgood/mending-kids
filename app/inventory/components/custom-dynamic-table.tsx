@@ -45,13 +45,9 @@ type Props<T = any> = {
 
   /* COLORS */
   headerTextColor?: string;
-
   rowBackgroundColor?: string;
-
   hoverRowColor?: string;
-
   selectedRowColor?: string;
-
   textColor?: string;
 
   /* CLICK */

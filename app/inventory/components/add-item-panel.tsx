@@ -97,7 +97,6 @@ export default function AddItemPanel({
     const e: Record<string, string> = {};
     if (!itemDescription.trim()) e.itemDescription = "Required";
     if (!unitOfMeasure) e.unitOfMeasure = "Required";
-    if (!expirationDate) e.expirationDate = "Required";
     if (!location) e.location = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -105,7 +104,6 @@ export default function AddItemPanel({
 
   function validateStep2(): boolean {
     const e: Record<string, string> = {};
-    if (!marketValue || isNaN(parseFloat(marketValue))) e.marketValue = "Required";
     if (!acquisitionMethod) e.acquisitionMethod = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -299,7 +297,7 @@ export default function AddItemPanel({
               </div>
 
               <div>
-                {label("Expiration Date", true, errors.expirationDate)}
+                {label("Expiration Date", errors.expirationDate)}
                 <Textfield
                   type="date"
                   placeholder="Select date"
@@ -331,7 +329,7 @@ export default function AddItemPanel({
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Market Value per Unit */}
               <div>
-                {label("Market Value per Unit", true, errors.marketValue)}
+                {label("Market Value per Unit", errors.marketValue)}
                 <Textfield
                   placeholder="Add market value"
                   value={marketValue}
