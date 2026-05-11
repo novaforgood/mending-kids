@@ -10,10 +10,17 @@ import ProjectIcon from '@atlaskit/icon/core/project';
 import PersonAvatarIcon from '@atlaskit/icon/core/person-avatar';
 import SettingsIcon from '@atlaskit/icon/core/settings';
 import NotificationIcon from '@atlaskit/icon/core/notification';
+import { supabaseBrowser as supabase } from "@/lib/supabase/client";
 
 export default function Header() {
   const router = useRouter()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+
+  async function handleTestLogout() {
+    await supabase.auth.signOut()
+    router.push("/login")
+    router.refresh()
+  }
 
   return (
     <>
@@ -65,6 +72,15 @@ export default function Header() {
           >
             <PersonAvatarIcon label="Profile" />
           </button>
+
+          <button
+            type="button"
+            onClick={() => void handleTestLogout()}
+            className="font-sans text-xs font-medium text-gray-600 border border-gray-300 rounded-md px-2 py-1.5 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            Log out (test)
+          </button>
+
         </div>
       </header>
 

@@ -3,24 +3,27 @@
 import { useEffect, useState } from "react";
 import DynamicTable from "@atlaskit/dynamic-table";
 import Button from "@atlaskit/button/new/";
+import CustomButton from "./components/custom-button";
 import { IconButton } from "@atlaskit/button/new";
 
 import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from "@atlaskit/icon/core/show-more-horizontal";
 
-import { fetchInventory, addItem, updateItemDocumentation } from "./actions";
-import DocumentationModal from "./utils/documentation-modal";
-import AddItemPanel from "./utils/add-item-panel";
+import { fetchInventory, addItem, updateItemDocumentation } from "./utils/actions";
+import DocumentationModal from "./components/documentation-modal";
+import AddItemPanel from "./components/add-item-panel";
 
-import { InventoryItem } from "./types";
-import ViewEditPanel from "./utils/ViewEditPanel";
+import { InventoryItem } from "./utils/types";
+import ViewEditPanel from "./ViewEditPanel";
+import { supabase } from "@/lib/supabase/supabaseClient";
 
 import { useAuthUser } from "../hooks/authUser";
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string>("anonymous");
 
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -28,17 +31,25 @@ export default function InventoryPage() {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("ASC");
 
-  const [isDocumentationModalOpen, setIsDocumentationModalOpen] = useState(false);
   const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
-
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [panelMode, setPanelMode] = useState<"view" | "edit">("view");
+
+  const [selectedTab, setSelectedTab] = useState<"active" | "archived">("active");
 
   const { user, loading } = useAuthUser();
 
   useEffect(() => {
     loadInventory();
+    getUser();
   }, []);
+
+  async function getUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      setUserEmail(user.email);
+    }
+  }
 
   async function loadInventory() {
     try {
@@ -57,7 +68,7 @@ export default function InventoryPage() {
     setIsSaving(true);
     setError(null);
     try {
-      await addItem(payload);
+      await addItem(payload, userEmail);
       await loadInventory();
       setIsPanelOpen(false);
     } catch {
@@ -67,20 +78,28 @@ export default function InventoryPage() {
     }
   }
 
+  const Cell = ({ children }: { children: React.ReactNode }) => (
+    <div
+      style={{
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+      }}
+    >
+      {children}
+    </div>
+  );
+
   const head = {
     cells: [
-      { key: "item_description", content: "Item Description", isSortable: true },
-      { key: "manufacturer", content: "Manufacturer", isSortable: true },
-      { key: "reference_number", content: "Reference Number", isSortable: true },
-      { key: "quantity", content: "Quantity", isSortable: true },
-      { key: "status", content: "Status" },
-      { key: "mission", content: "Mission" },
-      { key: "expiration", content: "Expiration", isSortable: true },
-      { key: "market_value_per_unit", content: "Value / Unit", isSortable: true },
-      { key: "total_value", content: "Total", isSortable: true },
-      { key: "valuation_source", content: "Valuation Source" },
-      { key: "acquisition_method", content: "Acquisition Method" },
-      { key: "actions", content: "Actions" },
+      { key: "item_description", content: "Item Description", isSortable: true, width: 200 },
+      { key: "manufacturer", content: "Manufacturer", isSortable: true, width: 150 },
+      { key: "reference_number", content: "Reference Number", isSortable: true, width: 150 },
+      { key: "quantity", content: "Quantity", isSortable: true, width: 100 },
+      { key: "status", content: "Status", width: 120 },
+      { key: "location", content: "Location", width: 120 },
+      { key: "expiration", content: "Expiration", isSortable: true, width: 140 },
+      { key: "actions", content: "Actions", width: 120 },
     ],
   };
 
@@ -88,93 +107,136 @@ export default function InventoryPage() {
     if (!sortKey) return 0;
     const aVal = a[sortKey as keyof InventoryItem];
     const bVal = b[sortKey as keyof InventoryItem];
-    if (typeof aVal === "number" && typeof bVal === "number") return sortOrder === "ASC" ? aVal - bVal : bVal - aVal;
-    if (aVal instanceof Date && bVal instanceof Date) return sortOrder === "ASC" ? aVal.getTime() - bVal.getTime() : bVal.getTime() - aVal.getTime();
-    return sortOrder === "ASC" ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal));
+
+    if (typeof aVal === "number" && typeof bVal === "number") {
+      return sortOrder === "ASC" ? aVal - bVal : bVal - aVal;
+    }
+
+    if (aVal instanceof Date && bVal instanceof Date) {
+      return sortOrder === "ASC"
+        ? aVal.getTime() - bVal.getTime()
+        : bVal.getTime() - aVal.getTime();
+    }
+
+    return sortOrder === "ASC"
+      ? String(aVal).localeCompare(String(aVal))
+      : String(bVal).localeCompare(String(aVal));
   });
 
-  const rows = sortedItems.map((item) => ({
-    key: String(item.id),
-    cells: [
-      { content: item.item_description },
-      { content: item.manufacturer },
-      { content: item.reference_number },
-      { content: item.quantity },
-      { content: item.status },
-      { content: item.mission },
-      { content: item.expiration.toLocaleDateString() },
-      { content: `$${item.market_value_per_unit.toFixed(2)}` },
-      { content: `$${item.total_value.toFixed(2)}` },
-      {
-        content: item.valuation_source ? (
-          <a href={item.valuation_source} target="_blank" rel="noreferrer" style={{ color: "#6CC3FF", fontSize: 13 }}>
-            {item.valuation_source}
-          </a>
-        ) : (
-          <span style={{ color: "#9FADBC" }}>—</span>
-        ),
-      },
-      { content: item.acquisition_method ?? <span style={{ color: "#9FADBC" }}>—</span> },
-      {
-        content: (
-          <div style={{ display: "flex", gap: 8 }}>
-            <IconButton icon={AddIcon} label="Add" onClick={() => console.log("Add item?", item.id)} />
-            <IconButton
-              icon={EditIcon}
-              label="Edit"
-              onClick={() => {
-                setSelectedItem(item);
-                setPanelMode("view");
-                setIsViewPanelOpen(true);
-              }}
-            />
-            <IconButton icon={MoreIcon} label="More" onClick={() => console.log("More options for item", item.id)} />
-          </div>
-        ),
-      },
-    ],
-  }));
+  const activeItems = sortedItems.filter((item) => {
+    if (item.status === "archived") return false;
+    if (item.expiration && item.expiration < new Date()) return false;
+    return true;
+  });
+
+  const archivedItems = sortedItems.filter((item) => {
+    if (item.status === "archived") return true;
+    if (item.expiration && item.expiration < new Date()) return true;
+    return false;
+  });
+
+  const createRows = (data: InventoryItem[]) =>
+    data.map((item) => ({
+      key: String(item.id),
+      cells: [
+        { content: <Cell>{item.item_description}</Cell> },
+        { content: <Cell>{item.manufacturer}</Cell> },
+        { content: <Cell>{item.reference_number}</Cell> },
+        { content: <Cell>{item.quantity}</Cell> },
+        { content: <Cell>{item.status}</Cell> },
+        { content: <Cell>{item.location}</Cell> },
+        { content: <Cell>{item.expiration.toLocaleDateString()}</Cell> },
+        {
+          content: (
+            <div style={{ display: "flex", gap: 8 }}>
+              <IconButton icon={AddIcon} label="Add" />
+              <IconButton
+                icon={EditIcon}
+                label="Edit"
+                onClick={() => {
+                  setSelectedItem(item);
+                  setPanelMode("view");
+                  setIsViewPanelOpen(true);
+                }}
+              />
+              <IconButton icon={MoreIcon} label="More" />
+            </div>
+          ),
+        },
+      ],
+    }));
 
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: "#F4F5F7" }}>Inventory</h1>
-        <Button appearance="primary" iconBefore={AddIcon} onClick={() => setIsPanelOpen(true)}>
+    <div style={{ padding: 32 }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 600 }}>Inventory</h1>
+        <CustomButton backgroundColor="#422670" textColor="#FFFFFF" iconBefore={<AddIcon label="" />} onClick={() => setIsPanelOpen(true)}>
           Add Item
-        </Button>
+        </CustomButton>
       </div>
 
-      {error && <div style={{ color: "#FF8B73", marginBottom: 12 }}>{error}</div>}
+      {/* Tabs */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", borderBottom: "1px solid #DFE1E6", gap: 16 }}>
+          {["active", "archived"].map((tab) => (
+            <div
+              key={tab}
+              onClick={() => setSelectedTab(tab as "active" | "archived")}
+              style={{
+                padding: "8px 50px",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: "16px",
+                borderBottom: selectedTab === tab ? "2px solid #5137A2" : "none",
+                color: selectedTab === tab ? "#5137A2" : "#172B4D",
+                textTransform: "capitalize",
+              }}
+            >
+              {tab}
+            </div>
+          ))}
+        </div>
+      </div>
 
-      <DynamicTable
-        head={head}
-        rows={rows}
-        sortKey={sortKey ?? undefined}
-        sortOrder={sortOrder}
-        onSort={({ key, sortOrder }) => {
-          setSortKey(key);
-          setSortOrder(sortOrder);
-        }}
-        rowsPerPage={10}
-        defaultPage={1}
-        emptyView={
-          <div style={{ padding: 16, textAlign: "center", color: "#9FADBC" }}>No inventory items yet</div>
-        }
-      />
+      {error && <div style={{ color: "#DE350B" }}>{error}</div>}
 
-      {/* View / Edit Panel */}
+      <div style={{ overflowX: "auto" }}>
+        <DynamicTable
+          head={head}
+          rows={createRows(selectedTab === "active" ? activeItems : archivedItems)}
+          sortKey={sortKey ?? undefined}
+          sortOrder={sortOrder}
+          onSort={({ key, sortOrder }) => {
+            setSortKey(key);
+            setSortOrder(sortOrder);
+          }}
+          rowsPerPage={10}
+          defaultPage={1}
+          isFixedSize
+          emptyView={
+            <div style={{ padding: 16, textAlign: "center", color: "#6B778C" }}>
+              {selectedTab === "active" ? "No active items" : "No archived items"}
+            </div>
+          }
+        />
+      </div>
+
       <ViewEditPanel
         isOpen={isViewPanelOpen}
         onClose={() => setIsViewPanelOpen(false)}
         item={selectedItem}
-        mode={panelMode}
+        // mode={panelMode}
         setItems={setItems}
       />
 
-      {/* Add Item Panel */}
-      <AddItemPanel isOpen={isPanelOpen} onClose={() => setIsPanelOpen(false)} onSave={handlePanelSave} isSaving={isSaving} />
+      <AddItemPanel
+        isOpen={isPanelOpen}
+        onClose={() => setIsPanelOpen(false)}
+        onSave={handlePanelSave}
+        isSaving={isSaving}
+      />
 
-      {/* Documentation modal */}
       <DocumentationModal
         isOpen={false}
         preSelectedItemId={selectedItem?.id ?? null}
@@ -187,7 +249,7 @@ export default function InventoryPage() {
         }))}
         onClose={() => {}}
         onNext={async (itemId, marketValue, valuationSource, acquisitionMethod) => {
-          await updateItemDocumentation(itemId, marketValue, valuationSource, acquisitionMethod);
+          await updateItemDocumentation(itemId, marketValue, valuationSource, acquisitionMethod, userEmail);
           await loadInventory();
         }}
       />

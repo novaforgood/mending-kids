@@ -1,6 +1,8 @@
 "use server";
 
+import { requireAdmin } from "@/lib/supabase/server-auth";
 import { supabaseServer } from "@/lib/supabase/server";
+import { updateItemQuantity } from "@/app/inventory/utils/actions";
 
 export type MissionPayload = {
   mission_name: string;
@@ -39,17 +41,7 @@ export async function fetchMissions() {
 }
 
 export async function addMission(payload: any) {
-  const {
-  data: { user },
-} = await supabaseServer.auth.getUser();
-
-if (!user) {
-  throw new Error("Unauthorized: no logged-in user found in server action.");
-}
-
-if (user.user_metadata?.role !== "admin") {
-  throw new Error("Forbidden: only admins can add missions.");
-}
+  await requireAdmin();
   const insertRow = {
     mission_name: payload.mission_name,
     description: payload.description ?? null,
@@ -86,20 +78,9 @@ export async function updateMission(
     status: string;
   }> 
   
-) {  // Add quantity parameter
+) {
+  await requireAdmin();
 
-  //  const {
-  //   data: { user },
-  // } = await supabaseServer.auth.getUser();
-
-  // if (!user) {
-  //   throw new Error("Unauthorized");
-  // }
-
-  // if (user.user_metadata?.role !== "admin") {
-  //   throw new Error("Forbidden: only admins can update missions.");
-  // }
-  
   const { error } = await supabaseServer
     .from("missions")
     .update(patch)  
@@ -166,18 +147,8 @@ export async function addMissionItem(input: {
   inventory_id: number;
   quantity: number;
 }) {
-  
-  const {
-  data: { user },
-} = await supabaseServer.auth.getUser();
+  await requireAdmin();
 
-if (!user) {
-  throw new Error("You do not have permission to add items.");
-}
-
-if (user.user_metadata?.role !== "admin") {
-  throw new Error("You do not have permission to add items.");
-}
   const { error: insertError } = await supabaseServer.from("mission_inventory").insert({
     mission_id: input.mission_id,
     inventory_id: input.inventory_id,
@@ -193,6 +164,7 @@ if (user.user_metadata?.role !== "admin") {
   if (fetchError) throw new Error(fetchError.message);
 
   const newQty = Math.max(0, (inv.quantity ?? 0) - input.quantity);
+<<<<<<< HEAD
   const { error: updateError } = await supabaseServer
     .from("inventory")
     .update({ quantity: newQty })
@@ -208,6 +180,9 @@ if (user.user_metadata?.role !== "admin") {
     mission_id: input.mission_id,
     inventory_id: input.inventory_id,
   });
+=======
+  await updateItemQuantity(input.inventory_id, newQty, "system");
+>>>>>>> origin/main
 }
 
 // ─── Mission Members ────────────────────────────────────────────────────────
@@ -232,17 +207,7 @@ export async function addMissionMember(input: {
   form_filled?: boolean;
   role?: string | null;
 }) {
-  const {
-    data: { user },
-  } = await supabaseServer.auth.getUser();
-
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
-
-  if (user.user_metadata?.role !== "admin") {
-    throw new Error("You do not have permission to add members.");
-  }
+  await requireAdmin();
 
   const { error } = await supabaseServer.from("mission_members").insert({
     mission_id: input.mission_id,
@@ -259,17 +224,7 @@ export async function updateMissionMember(
   id: number,
   patch: Partial<{ name: string; contact: string; form_filled: boolean; role: string }>
 ) {
-  const {
-    data: { user },
-  } = await supabaseServer.auth.getUser();
-
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
-
-  if (user.user_metadata?.role !== "admin") {
-    throw new Error("You do not have permission to update members.");
-  }
+  await requireAdmin();
 
   const { error } = await supabaseServer
     .from("mission_members")
@@ -280,17 +235,7 @@ export async function updateMissionMember(
 }
 /** Remove a member from a mission */
 export async function deleteMissionMember(id: number) {
-  const {
-    data: { user },
-  } = await supabaseServer.auth.getUser();
-
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
-
-  if (user.user_metadata?.role !== "admin") {
-    throw new Error("You do not have permission to delete members.");
-  }
+  await requireAdmin();
 
   const { error } = await supabaseServer
     .from("mission_members")
@@ -302,6 +247,7 @@ export async function deleteMissionMember(id: number) {
 
 /** 6) Update quantity for an item on a mission */
 export async function updateMissionItem(id: number, quantity: number) {
+<<<<<<< HEAD
   const { data: mi, error: fetchError } = await supabaseServer
     .from("mission_inventory")
     .select("inventory_id, mission_id, quantity_used")
@@ -319,14 +265,10 @@ export async function updateMissionItem(id: number, quantity: number) {
   const {
   data: { user },
 } = await supabaseServer.auth.getUser();
+=======
+  await requireAdmin();
+>>>>>>> origin/main
 
-if (!user) {
-  throw new Error("Unauthorized");
-}
-
-if (user.user_metadata?.role !== "admin") {
-  throw new Error("You do not have permission to update items.");
-}
   const { error } = await supabaseServer
     .from("mission_inventory")
     .update({ quantity_used: quantity })
@@ -379,6 +321,7 @@ export async function updateMissionItemBag(id: number, bagNumber: number | null)
 
 /** 7) Remove an item from a mission */
 export async function deleteMissionItem(id: number) {
+<<<<<<< HEAD
   const { data: mi, error: fetchError } = await supabaseServer
     .from("mission_inventory")
     .select("inventory_id, mission_id, quantity_used")
@@ -404,6 +347,9 @@ export async function deleteMissionItem(id: number) {
   if (user.user_metadata?.role !== "admin") {
     throw new Error("You do not have permission to delete items.");
   }
+=======
+  await requireAdmin();
+>>>>>>> origin/main
 
   const {error} = await supabaseServer
     .from("mission_inventory")
