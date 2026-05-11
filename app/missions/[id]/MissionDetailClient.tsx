@@ -105,7 +105,7 @@ function formatDateRange(start?: string | null, end?: string | null) {
 
 // ─── Tabs ───────────────────────────────────────────────────────────────────
 
-function ItemsTab({ items }: { items: MissionItem[] }) {
+function ItemsTab({ items, missionStatus }: { items: MissionItem[]; missionStatus?: string | null }) {
   const [quantities, setQuantities] = useState<Record<number, number>>(
     Object.fromEntries(items.map((r) => [r.id, r.quantity_used ?? 0]))
   );
@@ -243,12 +243,13 @@ function ItemsTab({ items }: { items: MissionItem[] }) {
                 <td className="py-3 pr-4">
                   <select
                     value={itemStatuses[row.id] ?? ""}
+                    disabled={missionStatus !== "archived"}
                     onChange={(e) => {
                       const val = e.target.value as ItemStatus | "";
                       setItemStatuses((prev) => ({ ...prev, [row.id]: val }));
                       updateMissionItemStatus(row.id, val || null).catch(console.error);
                     }}
-                    className={`rounded border px-2 py-0.5 text-xs font-medium outline-none ${
+                    className={`rounded border px-2 py-0.5 text-xs font-medium outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
                       itemStatuses[row.id] === "TO RETURN"
                         ? "border-red-300 bg-red-100 text-red-700"
                         : itemStatuses[row.id] === "RETURNED"
@@ -557,7 +558,7 @@ export default function MissionDetailClient({ mission, items, members }: Props) 
         </div>
 
         {/* Tab content */}
-        {activeTab === "items" && <ItemsTab items={items} />}
+        {activeTab === "items" && <ItemsTab items={items} missionStatus={mission.status} />}
         {activeTab === "people" && <PeopleTab members={members} missionId={mission.id} />}
         {activeTab === "documentation" && <DocumentationTab />}
       </div>
