@@ -46,6 +46,7 @@ export async function addItem(payload: InventoryPayload) {
     .from("inventory")
     .insert({
       ...payload,
+      donated_qty: payload.quantity,
       market_value_per_unit: unit,
       total_value: money2(payload.quantity * unit),
     });
