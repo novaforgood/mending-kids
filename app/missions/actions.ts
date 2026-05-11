@@ -351,6 +351,21 @@ export async function updateMissionItemStatus(id: number, status: string | null)
     .update({ status })
     .eq("id", id);
   if (error) throw new Error(error.message);
+
+  if (status === "RETURNED") {
+    const { data: mi, error: fetchError } = await supabaseServer
+      .from("mission_inventory")
+      .select("inventory_id")
+      .eq("id", id)
+      .single();
+    if (fetchError) throw new Error(fetchError.message);
+
+    const { error: updateError } = await supabaseServer
+      .from("inventory")
+      .update({ quantity: 0 })
+      .eq("id", mi.inventory_id);
+    if (updateError) throw new Error(updateError.message);
+  }
 }
 
 /** Update bag number for a mission inventory item */
