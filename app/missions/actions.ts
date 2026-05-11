@@ -139,6 +139,8 @@ export async function fetchMissionDetail(missionId: number) {
     .select(`
       id,
       quantity_used,
+      bag_number,
+      status,
       inventory:inventory_id ( * )
     `)
     .eq("mission_id", missionId);
@@ -340,6 +342,24 @@ if (user.user_metadata?.role !== "admin") {
     mission_id: mi.mission_id,
     inventory_id: mi.inventory_id,
   });
+}
+
+/** Update status for a mission inventory item */
+export async function updateMissionItemStatus(id: number, status: string | null) {
+  const { error } = await supabaseServer
+    .from("mission_inventory")
+    .update({ status })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** Update bag number for a mission inventory item */
+export async function updateMissionItemBag(id: number, bagNumber: number | null) {
+  const { error } = await supabaseServer
+    .from("mission_inventory")
+    .update({ bag_number: bagNumber })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 /** 7) Remove an item from a mission */

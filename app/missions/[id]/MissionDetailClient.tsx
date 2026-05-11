@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import AddMemberPanel from "./AddMemberPanel";
 import EditMissionPanel from "./EditMissionPanel";
-import { updateMissionItem } from "../actions";
+import { updateMissionItem, updateMissionItemBag, updateMissionItemStatus } from "../actions";
 import { useAuthUser } from "@/app/hooks/authUser";
 
 type InventoryItem = {
@@ -16,9 +16,13 @@ type InventoryItem = {
   unit_of_measure?: string;
 };
 
+type ItemStatus = "TO RETURN" | "RETURNED" | "USED";
+
 type MissionItem = {
   id: number;
   quantity_used: number;
+  bag_number?: number | null;
+  status?: ItemStatus | null;
   inventory: InventoryItem | null;
 };
 
@@ -105,116 +109,200 @@ function ItemsTab({ items }: { items: MissionItem[] }) {
   const [quantities, setQuantities] = useState<Record<number, number>>(
     Object.fromEntries(items.map((r) => [r.id, r.quantity_used ?? 0]))
   );
+  const [bagAssignments, setBagAssignments] = useState<Record<number, number | "">>(() =>
+    Object.fromEntries(
+      items
+        .filter((r) => r.bag_number != null)
+        .map((r) => [r.id, r.bag_number as number])
+    )
+  );
+  const [itemStatuses, setItemStatuses] = useState<Record<number, ItemStatus | "">>(() =>
+    Object.fromEntries(
+      items
+        .filter((r) => r.status != null)
+        .map((r) => [r.id, r.status as ItemStatus])
+    )
+  );
+  const [bagFilter, setBagFilter] = useState<number | null>(null);
   const [popupMessage, setPopupMessage] = useState("");
-const [showPopup, setShowPopup] = useState(false);
-const { user } = useAuthUser();
+  const [showPopup, setShowPopup] = useState(false);
+  const { user } = useAuthUser();
+
+  const assignedBags = Array.from(
+    new Set(Object.values(bagAssignments).filter((v): v is number => typeof v === "number"))
+  ).sort((a, b) => a - b);
+
+  const visibleItems = bagFilter === null
+    ? items
+    : items.filter((row) => bagAssignments[row.id] === bagFilter);
 
   const handleIncrement = async (id: number) => {
     const next = (quantities[id] ?? 0) + 1;
 
     if (user?.user_metadata?.role !== "admin") {
-    setPopupMessage("You do not have permission to update items.");
-    setShowPopup(true);
-    return;
-  }
+      setPopupMessage("You do not have permission to update items.");
+      setShowPopup(true);
+      return;
+    }
 
     setQuantities((prev) => ({ ...prev, [id]: next }));
     try {
       await updateMissionItem(id, next);
     } catch (err: any) {
-  setPopupMessage(err.message || "You do not have permission to update items.");
-  setShowPopup(true);
-  setQuantities((prev) => ({ ...prev, [id]: next - 1 }));
-}
+      setPopupMessage(err.message || "You do not have permission to update items.");
+      setShowPopup(true);
+      setQuantities((prev) => ({ ...prev, [id]: next - 1 }));
+    }
   };
 
   return (
     <>
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-gray-200 bg-white text-left text-gray-600">
-            <th className="py-3 pr-4 font-medium">
-              Item Description{" "}
-              <span className="text-gray-400">⇅</span>
-            </th>
-            <th className="py-3 pr-4 font-medium">
-              Manufacturing Company{" "}
-              <span className="text-gray-400">⇅</span>
-            </th>
-            <th className="py-3 pr-4 font-medium">
-              Reference Number{" "}
-              <span className="text-gray-400">⇅</span>
-            </th>
-            <th className="py-3 pr-4 font-medium">
-              Quantity{" "}
-              <span className="text-gray-400">⇅</span>
-            </th>
-            <th className="py-3 pr-4 font-medium">Status</th>
-            <th className="py-3 font-medium">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((row) => (
-            <tr key={row.id} className="border-b border-gray-100 hover:bg-gray-50">
-              <td className="py-3 pr-4 text-gray-900">
-                {row.inventory?.item_description ?? "—"}
-              </td>
-              <td className="py-3 pr-4 text-gray-600">
-                {row.inventory?.manufacturer ?? "—"}
-              </td>
-              <td className="py-3 pr-4 text-gray-600">
-                {row.inventory?.reference_number ?? "—"}
-              </td>
-              <td className="py-3 pr-4">
-                <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-700">
-                  {quantities[row.id] ?? 0}
-                </span>
-              </td>
-              <td className="py-3 pr-4">
-                <span className="rounded border border-gray-400 px-2 py-0.5 text-xs text-gray-600">
-                  LABEL
-                </span>
-              </td>
-              <td className="py-3">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleIncrement(row.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100"
-                  >
-                    +
-                  </button>
-                  <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
-                    ✏️
-                  </button>
-                  <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
-                    ···
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-          {items.length === 0 && (
-            <tr>
-              <td colSpan={6} className="py-12 text-center text-gray-400">
-                No items for this mission yet
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-</div>
+      {/* Bag filter chips */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="text-sm text-gray-500">Filter by bag:</span>
+        <button
+          onClick={() => setBagFilter(null)}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            bagFilter === null
+              ? "bg-indigo-700 text-white"
+              : "border border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          All
+        </button>
+        {assignedBags.map((bag) => (
+          <button
+            key={bag}
+            onClick={() => setBagFilter(bagFilter === bag ? null : bag)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              bagFilter === bag
+                ? "bg-indigo-700 text-white"
+                : "border border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            Bag {bag}
+          </button>
+        ))}
+      </div>
 
-{showPopup && (
-  <div style={overlayStyle}>
-    <div style={popupStyle}>
-      <p>{popupMessage}</p>
-      <button onClick={() => setShowPopup(false)}>OK</button>
-    </div>
-  </div>
-)}
-</>
-);
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 bg-white text-left text-gray-600">
+              <th className="py-3 pr-4 font-medium">
+                Item Description <span className="text-gray-400">⇅</span>
+              </th>
+              <th className="py-3 pr-4 font-medium">
+                Manufacturing Company <span className="text-gray-400">⇅</span>
+              </th>
+              <th className="py-3 pr-4 font-medium">
+                Reference Number <span className="text-gray-400">⇅</span>
+              </th>
+              <th className="py-3 pr-4 font-medium">
+                Quantity <span className="text-gray-400">⇅</span>
+              </th>
+              <th className="py-3 pr-4 font-medium">Bag</th>
+              <th className="py-3 pr-4 font-medium">Status</th>
+              <th className="py-3 font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleItems.map((row) => (
+              <tr key={row.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="py-3 pr-4 text-gray-900">
+                  {row.inventory?.item_description ?? "—"}
+                </td>
+                <td className="py-3 pr-4 text-gray-600">
+                  {row.inventory?.manufacturer ?? "—"}
+                </td>
+                <td className="py-3 pr-4 text-gray-600">
+                  {row.inventory?.reference_number ?? "—"}
+                </td>
+                <td className="py-3 pr-4">
+                  <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-700">
+                    {quantities[row.id] ?? 0}
+                  </span>
+                </td>
+                <td className="py-3 pr-4">
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="—"
+                    value={bagAssignments[row.id] ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value === "" ? "" : parseInt(e.target.value);
+                      setBagAssignments((prev) => ({ ...prev, [row.id]: val as number | "" }));
+                    }}
+                    onBlur={(e) => {
+                      const val = e.target.value === "" ? null : parseInt(e.target.value);
+                      updateMissionItemBag(row.id, val).catch(console.error);
+                    }}
+                    className="w-16 rounded border border-gray-300 px-2 py-0.5 text-center text-sm text-gray-900 outline-none focus:border-indigo-500"
+                  />
+                </td>
+                <td className="py-3 pr-4">
+                  <select
+                    value={itemStatuses[row.id] ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value as ItemStatus | "";
+                      setItemStatuses((prev) => ({ ...prev, [row.id]: val }));
+                      updateMissionItemStatus(row.id, val || null).catch(console.error);
+                    }}
+                    className={`rounded border px-2 py-0.5 text-xs font-medium outline-none ${
+                      itemStatuses[row.id] === "TO RETURN"
+                        ? "border-red-300 bg-red-100 text-red-700"
+                        : itemStatuses[row.id] === "RETURNED"
+                        ? "border-green-300 bg-green-100 text-green-700"
+                        : itemStatuses[row.id] === "USED"
+                        ? "border-yellow-300 bg-yellow-100 text-yellow-700"
+                        : "border-gray-300 bg-white text-gray-500"
+                    }`}
+                  >
+                    <option value="">STATUS</option>
+                    <option value="TO RETURN">TO RETURN</option>
+                    <option value="RETURNED">RETURNED</option>
+                    <option value="USED">USED</option>
+                  </select>
+                </td>
+                <td className="py-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleIncrement(row.id)}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100"
+                    >
+                      +
+                    </button>
+                    <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
+                      ✏️
+                    </button>
+                    <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
+                      ···
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {visibleItems.length === 0 && (
+              <tr>
+                <td colSpan={7} className="py-12 text-center text-gray-400">
+                  {bagFilter !== null ? `No items assigned to Bag ${bagFilter}` : "No items for this mission yet"}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {showPopup && (
+        <div style={overlayStyle}>
+          <div style={popupStyle}>
+            <p>{popupMessage}</p>
+            <button onClick={() => setShowPopup(false)}>OK</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 function PeopleTab({

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -21,7 +21,6 @@
     "@atlaskit/lozenge": "^13.4.3",
     "@atlaskit/page": "^14.0.1",
     "@atlaskit/page-header": "^12.1.17",
-    "@atlaskit/right-side-panel": "^3.0.14",
     "@atlaskit/section-message": "^8.12.6",
     "@atlaskit/select": "^21.7.5",
     "@atlaskit/tabs": "^18.3.4",
