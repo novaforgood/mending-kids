@@ -105,7 +105,7 @@ function formatDateRange(start?: string | null, end?: string | null) {
 
 // ─── Tabs ───────────────────────────────────────────────────────────────────
 
-function ItemsTab({ items, missionStatus }: { items: MissionItem[]; missionStatus?: string | null }) {
+function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boolean }) {
   const [quantities, setQuantities] = useState<Record<number, number>>(
     Object.fromEntries(items.map((r) => [r.id, r.quantity_used ?? 0]))
   );
@@ -243,7 +243,7 @@ function ItemsTab({ items, missionStatus }: { items: MissionItem[]; missionStatu
                 <td className="py-3 pr-4">
                   <select
                     value={itemStatuses[row.id] ?? ""}
-                    disabled={missionStatus !== "archived"}
+                    disabled={!isArchived}
                     onChange={(e) => {
                       const val = e.target.value as ItemStatus | "";
                       setItemStatuses((prev) => ({ ...prev, [row.id]: val }));
@@ -558,7 +558,15 @@ export default function MissionDetailClient({ mission, items, members }: Props) 
         </div>
 
         {/* Tab content */}
-        {activeTab === "items" && <ItemsTab items={items} missionStatus={mission.status} />}
+        {activeTab === "items" && (
+          <ItemsTab
+            items={items}
+            isArchived={
+              mission.status === "archived" ||
+              (mission.status !== "active" && !!mission.end_date && mission.end_date < new Date().toISOString().split("T")[0])
+            }
+          />
+        )}
         {activeTab === "people" && <PeopleTab members={members} missionId={mission.id} />}
         {activeTab === "documentation" && <DocumentationTab />}
       </div>
