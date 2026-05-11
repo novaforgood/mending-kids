@@ -14,6 +14,13 @@ export type InventoryItem = {
   status: string;
   mission: string;
   expiration: Date;
+  mission_inventory?: {
+    mission_id: number;
+    quantity_used: number | null;
+    missions?: {
+      mission_name: string | null;
+    };
+  }[] | null;
   internal_notes: string | null;
   market_value_per_unit: number;
   total_value: number;
@@ -87,6 +94,7 @@ export type UpdateItemDetailsPayload = Partial<{
   typical_shelf_life: string;
   location: string;
   internal_notes: string;
+  status: 'active' | 'archived';
 }>;
 
 export type ActivityRow = {

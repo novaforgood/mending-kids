@@ -49,7 +49,7 @@ export async function fetchItemActivityLog(inventoryId: number) {
 export async function fetchInventory() {
   const { data, error } = await supabaseServer
     .from("inventory")
-    .select("*")
+    .select(`*, mission_inventory(mission_id, quantity_used, missions(mission_name))`)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -285,6 +285,12 @@ export async function updateItemDetails(
     changes.internal_notes = {
       old: oldItem.internal_notes || "",
       new: payload.internal_notes || "",
+    };
+  }
+  if (payload.status !== undefined) {
+    changes.status = {
+      old: oldItem.status || "",
+      new: payload.status,
     };
   }
 

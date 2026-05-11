@@ -2,17 +2,21 @@
 
 import { useEffect, useState } from "react";
 import CustomDynamicTable from "./components/custom-dynamic-table";
-import DynamicTable from "@atlaskit/dynamic-table";
-import Button from "@atlaskit/button/new/";
 import CustomButton from "./components/custom-button";
 import { IconButton } from "@atlaskit/button/new";
 import CustomLozenge from "./components/custom-lozenge";
+import DropdownMenu, {
+  DropdownItem,
+  DropdownItemGroup,
+} from "@atlaskit/dropdown-menu";
+import CustomDatePicker from "./components/CustomDatePicker";
 
 import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from "@atlaskit/icon/core/show-more-horizontal";
+import ChevronDownIcon from '@atlaskit/icon/core/chevron-down';
 
-import { fetchInventory, addItem, updateItemDocumentation } from "./utils/actions";
+import { fetchInventory, addItem, updateItemDocumentation, updateItemDetails, deleteItem } from "./utils/actions";
 import DocumentationModal from "./components/documentation-modal";
 import AddItemPanel from "./components/add-item-panel";
 
@@ -20,7 +24,6 @@ import { InventoryItem } from "./utils/types";
 import ViewEditPanel from "./ViewEditPanel";
 import { supabase } from "@/lib/supabase/supabaseClient";
 
-import { useAuthUser } from "../hooks/authUser";
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -35,11 +38,12 @@ export default function InventoryPage() {
 
   const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const [panelMode, setPanelMode] = useState<"view" | "edit">("view");
 
   const [selectedTab, setSelectedTab] = useState<"active" | "archived">("active");
 
-  const { user, loading } = useAuthUser();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedMission, setSelectedMission] = useState("");
+  const [selectedExpiration, setSelectedExpiration] = useState("");
 
   useEffect(() => {
     loadInventory();
@@ -55,8 +59,8 @@ export default function InventoryPage() {
 
   async function loadInventory() {
     try {
-      const data = await fetchInventory();
-      const parsedData = data.map((item: any) => ({
+      const data = (await fetchInventory()) as InventoryItem[];
+      const parsedData = data.map((item) => ({
         ...item,
         expiration: item.expiration ? new Date(item.expiration) : new Date(),
       }));
@@ -98,7 +102,6 @@ export default function InventoryPage() {
       { key: "manufacturer", content: "Manufacturer", isSortable: true, width: 150 },
       { key: "reference_number", content: "Reference Number", isSortable: true, width: 150 },
       { key: "quantity", content: "Quantity", isSortable: true, width: 100 },
-      // { key: "status", content: "Status", width: 120 },
       { key: "location", content: "Location", width: 120 },
       { key: "expiration", content: "Expiration", isSortable: true, width: 140 },
       { key: "actions", content: "Actions", width: 120 },
@@ -125,13 +128,51 @@ export default function InventoryPage() {
       : String(bVal).localeCompare(String(aVal));
   });
 
-  const activeItems = sortedItems.filter((item) => {
+  const missionOptions = Array.from(
+    new Set(
+      items
+        .flatMap((i) =>
+          i.mission_inventory?.map((mi) => mi.missions?.mission_name).filter(Boolean) ?? []
+        )
+        .filter(Boolean)
+    )
+  );
+
+  const filteredItems = sortedItems.filter((item) => {
+    const missionNames =
+      item.mission_inventory?.map((mi) => mi.missions?.mission_name).filter(Boolean) ?? [];
+
+    const matchesSearch =
+      searchQuery.trim() === "" ||
+      item.item_description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.reference_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.manufacturer?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      missionNames.some((mission) =>
+        mission.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+    const matchesMission =
+      selectedMission === "" ||
+      missionNames.includes(selectedMission);
+
+    const expirationFilter =
+      selectedExpiration === ""
+        ? null
+        : new Date(`${selectedExpiration}T23:59:59.999`);
+
+    const matchesExpiration =
+      expirationFilter === null || item.expiration <= expirationFilter;
+
+    return matchesSearch && matchesMission && matchesExpiration;
+  });
+
+  const activeItems = filteredItems.filter((item) => {
     if (item.status === "archived") return false;
     if (item.expiration && item.expiration < new Date()) return false;
     return true;
   });
 
-  const archivedItems = sortedItems.filter((item) => {
+  const archivedItems = filteredItems.filter((item) => {
     if (item.status === "archived") return true;
     if (item.expiration && item.expiration < new Date()) return true;
     return false;
@@ -146,23 +187,56 @@ export default function InventoryPage() {
         { content: <Cell>{item.manufacturer}</Cell> },
         { content: <Cell>{item.reference_number}</Cell> },
         { content: <Cell><CustomLozenge>{item.quantity}</CustomLozenge></Cell> },
-        // { content: <Cell>{item.status}</Cell> },
         { content: <Cell>{item.location}</Cell> },
         { content: <Cell>{item.expiration.toLocaleDateString()}</Cell> },
         {
           content: (
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
               <IconButton icon={AddIcon} label="Add" />
               <IconButton
                 icon={EditIcon}
                 label="Edit"
                 onClick={() => {
                   setSelectedItem(item);
-                  setPanelMode("view");
                   setIsViewPanelOpen(true);
                 }}
               />
-              <IconButton icon={MoreIcon} label="More" />
+              <DropdownMenu
+                trigger={({ triggerRef, ...triggerProps }) => (
+                  <IconButton
+                    {...triggerProps}
+                    ref={triggerRef}
+                    icon={MoreIcon}
+                    label="More"
+                  />
+                )}
+              >
+                <DropdownItemGroup>
+                <DropdownItem
+                  onClick={async () => {
+                    const newStatus = item.status === "archived" ? "active" : "archived";
+
+                    await updateItemDetails(
+                      item.id,
+                      { status: newStatus },
+                      userEmail
+                    );
+
+                    await loadInventory();
+                  }}
+                >
+                  {item.status === "archived" ? "Unarchive" : "Archive"}
+                </DropdownItem>
+                  <DropdownItem
+                    onClick={async () => {
+                      await deleteItem(item.id, userEmail);
+                      console.log("Delete item");
+                    }}
+                  >
+                    Delete
+                  </DropdownItem>
+                </DropdownItemGroup>
+              </DropdownMenu>
             </div>
           ),
         },
@@ -179,9 +253,82 @@ export default function InventoryPage() {
         </CustomButton>
       </div>
 
+    <div className="flex items-center justify-end mb-6">
+      {/* Filters */}
+      <div className="flex gap-2">
+        <div style={{ display: "flex", gap: 8 }}>
+          <DropdownMenu
+            trigger={({ triggerRef, ...triggerProps }) => (
+              <button
+                {...triggerProps}
+                ref={triggerRef}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  border: "1px solid #8C8F97",
+                  borderRadius: 6,
+                  padding: "6px 12px",
+                  width: 160,
+                  fontSize: 14,
+                  background: "white",
+                  cursor: "pointer",
+                }}
+              >
+                <span
+                  style={{
+                    color: '#505258',
+                    fontWeight: 500,
+                  }}
+                >{selectedMission || "Mission"}</span>
+                <ChevronDownIcon style={{ color: '#505258', label: "dropdown" }} />
+              </button>
+            )}
+          >
+            <DropdownItemGroup>
+              <DropdownItem onClick={() => setSelectedMission("")}>
+                All Missions
+              </DropdownItem>
+
+              {missionOptions.map((mission) => (
+                <DropdownItem
+                  key={mission}
+                  onClick={() => setSelectedMission(mission)}
+                >
+                  {mission}
+                </DropdownItem>
+              ))}
+            </DropdownItemGroup>
+          </DropdownMenu>
+        </div>
+        <CustomDatePicker
+          value={selectedExpiration}
+          onChange={setSelectedExpiration}
+          placeholder="Expiration"
+        />
+        {/* Search */}
+        <input
+          type="text"
+          placeholder="Search inventory..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            border: "1px solid #8C8F97",
+            borderRadius: 6,
+            padding: "6px 12px",
+            fontSize: 13,
+            width: 240,
+            outline: "none",
+          }}
+        />
+
+      </div>
+    </div>
+
       {/* Tabs */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", borderBottom: "1px solid #DFE1E6", gap: 16 }}>
+        <div style={{ display: "flex", borderBottom: "2px solid #DFE1E6", gap: 16 }}>
           {["active", "archived"].map((tab) => (
             <div
               key={tab}
@@ -191,7 +338,7 @@ export default function InventoryPage() {
                 cursor: "pointer",
                 fontWeight: 600,
                 fontSize: "16px",
-                borderBottom: selectedTab === tab ? "2px solid #5137A2" : "none",
+                borderBottom: selectedTab === tab ? "3px solid #5137A2" : "none",
                 color: selectedTab === tab ? "#5137A2" : "#172B4D",
                 textTransform: "capitalize",
               }}
@@ -227,7 +374,6 @@ export default function InventoryPage() {
 
           onRowClick={(item) => {
             setSelectedItem(item);
-            setPanelMode("view");
             setIsViewPanelOpen(true);
           }}
 
