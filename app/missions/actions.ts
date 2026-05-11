@@ -164,25 +164,7 @@ export async function addMissionItem(input: {
   if (fetchError) throw new Error(fetchError.message);
 
   const newQty = Math.max(0, (inv.quantity ?? 0) - input.quantity);
-<<<<<<< HEAD
-  const { error: updateError } = await supabaseServer
-    .from("inventory")
-    .update({ quantity: newQty })
-    .eq("id", input.inventory_id);
-  if (updateError) throw new Error(updateError.message);
-
-  await supabaseServer.from("activity_log").insert({
-    action_type: "assigned",
-    performed_by: "system",
-    description: `Assigned ${input.quantity} unit(s) of "${inv.item_description}" to mission`,
-    item_name: inv.item_description,
-    quantity: input.quantity,
-    mission_id: input.mission_id,
-    inventory_id: input.inventory_id,
-  });
-=======
   await updateItemQuantity(input.inventory_id, newQty, "system");
->>>>>>> origin/main
 }
 
 // ─── Mission Members ────────────────────────────────────────────────────────
@@ -247,7 +229,6 @@ export async function deleteMissionMember(id: number) {
 
 /** 6) Update quantity for an item on a mission */
 export async function updateMissionItem(id: number, quantity: number) {
-<<<<<<< HEAD
   const { data: mi, error: fetchError } = await supabaseServer
     .from("mission_inventory")
     .select("inventory_id, mission_id, quantity_used")
@@ -262,12 +243,7 @@ export async function updateMissionItem(id: number, quantity: number) {
     .single();
   if (invError) throw new Error(invError.message);
 
-  const {
-  data: { user },
-} = await supabaseServer.auth.getUser();
-=======
   await requireAdmin();
->>>>>>> origin/main
 
   const { error } = await supabaseServer
     .from("mission_inventory")
@@ -321,7 +297,6 @@ export async function updateMissionItemBag(id: number, bagNumber: number | null)
 
 /** 7) Remove an item from a mission */
 export async function deleteMissionItem(id: number) {
-<<<<<<< HEAD
   const { data: mi, error: fetchError } = await supabaseServer
     .from("mission_inventory")
     .select("inventory_id, mission_id, quantity_used")
@@ -336,20 +311,7 @@ export async function deleteMissionItem(id: number) {
     .single();
   if (invError) throw new Error(invError.message);
 
-  const {
-    data: { user },
-  } = await supabaseServer.auth.getUser();
-
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
-
-  if (user.user_metadata?.role !== "admin") {
-    throw new Error("You do not have permission to delete items.");
-  }
-=======
   await requireAdmin();
->>>>>>> origin/main
 
   const {error} = await supabaseServer
     .from("mission_inventory")
