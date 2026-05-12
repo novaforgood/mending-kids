@@ -50,7 +50,6 @@ export default function CustomDatePicker({
         onChange={(val) => onChange(val)}
         placeholder=" "
         appearance="default"
-        inputProps={{ readOnly: true }}
       />
     </div>
   );

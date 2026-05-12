@@ -7,23 +7,33 @@ import Breadcrumbs, { BreadcrumbsItem } from "@atlaskit/breadcrumbs";
 import CustomButton from "./components/custom-button";
 import CustomInlineEdit from "./components/CustomInlineEdit";
 import { SwappedPageHeader } from "./components/swapped-page-header";
-
 import ScrollablePaginatedTable from "./components/scrollable-table";
-
 import { SidePanel } from "./components/SidePanel";
-import { fetchItemActivityLog, updateItemDetails } from "./utils/actions";
+import { fetchItemActivityLog, updateItemDetails, addItemQuantity, fetchInventoryEntries } from "./utils/actions";
+import AddQuantityModal from "./components/AddQuantityModal";
 
 import AddIcon from "@atlaskit/icon/core/add";
 import GlobeIcon from "@atlaskit/icon/core/globe";
 import EditIcon from "@atlaskit/icon/core/edit";
 
-import {State, Props, ActivityEntry, ActivityRow, DocumentEntry, UpdateItemDetailsPayload} from "./utils/types";
+import { State, Props, ActivityEntry, ActivityRow, DocumentEntry, UpdateItemDetailsPayload } from "./utils/types";
 
-export default class ViewEditPanel extends React.Component<Props, State> {
-  state: State = {
+interface InventoryEntry {
+  id: number;
+  inventory_id: number;
+  quantity_added: number;
+  notes: string | null;
+  added_by: string | null;
+  date_added: string;
+}
+
+export default class ViewEditPanel extends React.Component<Props, State & { isAddQuantityOpen: boolean; inventoryEntries: InventoryEntry[] }> {
+  state = {
     isEditing: false,
-    selectedTab: "Overview",
-    activity: [],
+    selectedTab: "Overview" as State["selectedTab"],
+    activity: [] as ActivityRow[],
+    inventoryEntries: [] as InventoryEntry[],
+    isAddQuantityOpen: false,
     form: {
       manufacturer: "",
       reference_number: "",
@@ -37,17 +47,16 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
   componentDidMount() {
     this.loadActivity();
+    this.loadInventoryEntries();
   }
 
   componentDidUpdate(prevProps: Props) {
     if (prevProps.item !== this.props.item) {
-
       const item = this.props.item;
-
       this.setState({
         isEditing: false,
         selectedTab: "Overview",
-
+        isAddQuantityOpen: false,
         form: item
           ? {
               manufacturer: item.manufacturer ?? "",
@@ -61,21 +70,17 @@ export default class ViewEditPanel extends React.Component<Props, State> {
           : this.state.form,
       });
       this.loadActivity();
+      this.loadInventoryEntries();
     }
   }
 
-  // ---------------------------
-  // ACTIVITY TAB LOGIC
-  // ---------------------------
   async loadActivity() {
     const { item } = this.props;
     if (!item) return;
-
     try {
       const data = await fetchItemActivityLog(item.id);
       const activity: ActivityRow[] = data.map((entry: ActivityEntry) => {
         let formattedQuantity = "-";
-
         if (entry.quantity != null) {
           if (["added", "donated"].includes(entry.action_type)) {
             formattedQuantity = `+${entry.quantity}`;
@@ -85,7 +90,6 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             formattedQuantity = `${entry.quantity}`;
           }
         }
-
         return {
           key: `${entry.id}-${entry.created_at}`,
           activity: entry.action_type,
@@ -95,43 +99,57 @@ export default class ViewEditPanel extends React.Component<Props, State> {
           timestamp: entry.created_at,
         };
       });
-
       this.setState({ activity });
     } catch {
       this.setState({ activity: [] });
     }
   }
 
-  // ---------------------------
-  // EXPIRATION LOZENGE
-  // ---------------------------
-  renderExpirationLozenge(date?: Date) {
-    if (!date) return null;
-
-    const expText = `EXP ${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
-
-    return (
-      <CustomLozenge appearance="exp">
-        {expText}
-      </CustomLozenge>
-    );
+  async loadInventoryEntries() {
+    const { item } = this.props;
+    if (!item) return;
+    try {
+      const data = await fetchInventoryEntries(item.id);
+      this.setState({ inventoryEntries: data ?? [] });
+    } catch {
+      this.setState({ inventoryEntries: [] });
+    }
   }
 
-  // ---------------------------
-  // OVERVIEW TAB
-  // ---------------------------
+  async handleAddQuantityConfirm(quantity: number, notes: string) {
+    const { item } = this.props;
+    if (!item) return;
+    await addItemQuantity(item.id, quantity, notes, "user@email.com");
+    await this.loadInventoryEntries();
+    await this.loadActivity();
+    if (this.props.setItems) {
+      const { fetchInventory } = await import("./utils/actions");
+      const data = await fetchInventory();
+      this.props.setItems(
+        data.map((i: any) => ({
+          ...i,
+          expiration: i.expiration ? new Date(i.expiration) : new Date(),
+        }))
+      );
+    }
+    this.setState({ isAddQuantityOpen: false });
+  }
+
+  renderExpirationLozenge(date?: Date) {
+    if (!date) return null;
+    const expText = `EXP ${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
+    return <CustomLozenge appearance="exp">{expText}</CustomLozenge>;
+  }
+
   renderOverview() {
     const { item } = this.props;
     if (!item) return null;
+    const { inventoryEntries } = this.state;
 
     const daysToExpiration = item.expiration
       ? (item.expiration.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       : null;
-
-    const expirationSoon =
-      daysToExpiration !== null &&
-      daysToExpiration > 0 &&
-      daysToExpiration < 90;
+    const expirationSoon = daysToExpiration !== null && daysToExpiration > 0 && daysToExpiration < 90;
 
     return (
       <div style={{ display: "flex", flexDirection: "column" }}>
@@ -144,17 +162,29 @@ export default class ViewEditPanel extends React.Component<Props, State> {
         )}
 
         <div style={{ marginBottom: 24, display: "flex", gap: 12 }}>
-          <CustomButton iconBefore={<AddIcon label="Add Items"/>}>
+        <CustomButton
+          onClick={() => this.setState({ isAddQuantityOpen: true })}
+          width="190px"
+          height="48px"
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: 36 }}>
+            <AddIcon label="Add Items" />
             Add Items
-          </CustomButton>
-          <CustomButton
+          </span>
+        </CustomButton>
+
+        <CustomButton
             backgroundColor="#A12654"
             hoverColor="#B63A69"
             textColor="#FFFFFF"
-            iconBefore={<GlobeIcon label="Assign to Mission"/>}
             onClick={this.props.onAssignToMission}
+            width="190px"
+            height="48px"
           >
-            Assign to Mission
+            <span style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: 12 }}>
+              <GlobeIcon label="Assign to Mission" />
+              Assign to Mission
+            </span>
           </CustomButton>
         </div>
 
@@ -172,7 +202,6 @@ export default class ViewEditPanel extends React.Component<Props, State> {
           >
             Total Available
           </div>
-
           <CustomLozenge appearance="unit_stat">
             {`${item.quantity} ${(item.unit_of_measure ?? "UNITS").toUpperCase()}`}
           </CustomLozenge>
@@ -189,82 +218,67 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             fontFeatureSettings: "'liga' off, 'calt' off",
           }}
         >
-          Inventory Entries Table
+          Inventory Entries
         </div>
-
 
         <ScrollablePaginatedTable
           columns={[
-            { key: "field", header: "Field", width: 100 },
-            { key: "value", header: "Value", width: 100 },
+            { key: "date", header: "Date Added", width: 120 },
+            { key: "quantity", header: "Quantity Added", width: 120 },
+            { key: "added_by", header: "Added By", width: 120 },
+            { key: "notes", header: "Notes", width: 180 },
           ]}
-          rows={[
-            { key: "manufacturer", cells: ["Manufacturer", item.manufacturer ?? ""] },
-            { key: "reference", cells: ["Reference Number", item.reference_number ?? ""] },
-            { key: "lot", cells: ["Lot Number", item.lot_number ?? ""] },
-            { key: "unit", cells: ["Unit of Measure", item.unit_of_measure ?? ""], }
-          ]}
+          rows={
+            inventoryEntries.length > 0
+              ? inventoryEntries.map((entry) => ({
+                  key: String(entry.id),
+                  cells: [
+                    entry.date_added
+                      ? new Date(entry.date_added + "T00:00:00").toLocaleDateString()
+                      : "-",
+                    `+${entry.quantity_added}`,
+                    entry.added_by || "-",
+                    entry.notes || "-",
+                  ],
+                }))
+              : [{ key: "empty", cells: ["No entries yet", "", "", ""] }]
+          }
           rowsPerPage={5}
         />
       </div>
     );
   }
 
-  // ---------------------------
-  // DETAILS TAB
-  // ---------------------------
   renderDetails() {
     const { item } = this.props;
     if (!item) return null;
-
     const { form, isEditing } = this.state;
 
     const updateField = (key: keyof State["form"], value: string) => {
-      this.setState({
-        form: {
-          ...form,
-          [key]: value,
-        },
-      });
+      this.setState({ form: { ...form, [key]: value } });
     };
 
-    const renderField = (
-      label: string,
-      key: keyof State["form"],
-      placeholder?: string
-    ) => {
+    const renderField = (label: string, key: keyof State["form"], placeholder?: string) => {
       if (isEditing) {
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
-              {label}
-            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>{label}</div>
             <input
               value={form[key] ?? ""}
               placeholder={placeholder}
               onChange={(e) => updateField(key, e.target.value)}
-              style={{
-                padding: 8,
-                border: "1px solid #DFE1E6",
-                borderRadius: 6,
-                fontSize: 14,
-              }}
+              style={{ padding: 8, border: "1px solid #DFE1E6", borderRadius: 6, fontSize: 14 }}
             />
           </div>
         );
       }
-
       return (
         <CustomInlineEdit
           label={label}
           value={(form[key] as string) || (placeholder ?? "")}
           onSave={async (v) => {
             updateField(key, v);
-            await updateItemDetails(
-              item.id,
-              { [key]: v } as UpdateItemDetailsPayload,
-              "user@email.com"
-            );
+            await updateItemDetails(item.id, { [key]: v } as UpdateItemDetailsPayload, "user@email.com");
           }}
         />
       );
@@ -272,93 +286,39 @@ export default class ViewEditPanel extends React.Component<Props, State> {
 
     return (
       <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 32 }}>
-        {/* MAIN GRID */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 24,
-          }}
-        >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
           {renderField("Manufacturing Company", "manufacturer", item.manufacturer ?? "")}
-
           <div />
-
           {renderField("Reference Number", "reference_number", item.reference_number ?? "")}
-
           {renderField("Lot Number", "lot_number", item.lot_number ?? "")}
-
           {renderField("Unit of Measure", "unit_of_measure", item.unit_of_measure || "")}
-
-          {renderField(
-            "Typical Shelf Life",
-            "typical_shelf_life",
-            item.typical_shelf_life ? `${item.typical_shelf_life} days` : ""
-          )}
-
+          {renderField("Typical Shelf Life", "typical_shelf_life", item.typical_shelf_life ? `${item.typical_shelf_life} days` : "")}
           {renderField("Location", "location", item.location ?? "")}
         </div>
 
-        {/* META */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 24,
-          }}
-        >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
-              Created By
-            </div>
-            <div style={{ fontSize: 14, color: "#172B4D" }}>
-              {item.created_by ?? "-"}
-            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>Created By</div>
+            <div style={{ fontSize: 14, color: "#172B4D" }}>{item.created_by ?? "-"}</div>
           </div>
-
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
-              Created Date
-            </div>
-            <div style={{ fontSize: 14, color: "#172B4D" }}>
-              {new Date(item.created_at).toLocaleDateString()}
-            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>Created Date</div>
+            <div style={{ fontSize: 14, color: "#172B4D" }}>{new Date(item.created_at).toLocaleDateString()}</div>
           </div>
-
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>
-              Last Updated
-            </div>
-            <div style={{ fontSize: 14, color: "#172B4D" }}>
-              {new Date(item.updated_at).toLocaleString()}
-            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>Last Updated</div>
+            <div style={{ fontSize: 14, color: "#172B4D" }}>{new Date(item.updated_at).toLocaleString()}</div>
           </div>
         </div>
 
-        {/* INTERNAL NOTES */}
         <div>
           <h4 style={{ marginBottom: 12 }}>Internal Notes</h4>
-
           {isEditing ? (
             <textarea
               value={form.internal_notes}
               placeholder={item.internal_notes ?? "Add notes..."}
-              onChange={(e) =>
-                this.setState({
-                  form: {
-                    ...form,
-                    internal_notes: e.target.value,
-                  },
-                })
-              }
-              style={{
-                width: "100%",
-                minHeight: 100,
-                padding: 12,
-                borderRadius: 8,
-                border: "1px solid #DFE1E6",
-                fontSize: 14,
-              }}
+              onChange={(e) => this.setState({ form: { ...form, internal_notes: e.target.value } })}
+              style={{ width: "100%", minHeight: 100, padding: 12, borderRadius: 8, border: "1px solid #DFE1E6", fontSize: 14 }}
             />
           ) : (
             <CustomInlineEdit
@@ -366,11 +326,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
               value={form.internal_notes || item.internal_notes || ""}
               onSave={async (v) => {
                 updateField("internal_notes", v);
-                await updateItemDetails(
-                  item.id,
-                  { internal_notes: v },
-                  "user@email.com"
-                );
+                await updateItemDetails(item.id, { internal_notes: v }, "user@email.com");
               }}
             />
           )}
@@ -379,27 +335,19 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     );
   }
 
-  // ---------------------------
-  // DOCUMENTATION TAB
-  // ---------------------------
   renderDocumentation() {
     const { item } = this.props;
     if (!item) return null;
 
     const Field = ({ label, value }: { label: string; value: string }) => (
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span style={{ fontSize: 12, color: "#6B778C", fontWeight: 600 }}>
-          {label}
-        </span>
-        <span style={{ fontSize: 14, color: "#172B4D" }}>
-          {value || "-"}
-        </span>
+        <span style={{ fontSize: 12, color: "#6B778C", fontWeight: 600 }}>{label}</span>
+        <span style={{ fontSize: 14, color: "#172B4D" }}>{value || "-"}</span>
       </div>
     );
 
     return (
       <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 32 }}>
-        {/* Valuation */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
           <Field label="Total Value" value={item.total_value ? `$${item.total_value.toLocaleString()}` : "-"} />
           <Field label="Market Value Per Unit" value={item.market_value_per_unit ? `$${item.market_value_per_unit}` : "-"} />
@@ -407,7 +355,6 @@ export default class ViewEditPanel extends React.Component<Props, State> {
           <Field label="Valuation Source" value={item.valuation_source ?? "-"} />
         </div>
 
-        {/* Documents */}
         <div>
           <div
             style={{
@@ -431,12 +378,7 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             ]}
             rows={(item.documents ?? []).map((doc: DocumentEntry) => ({
               key: doc.id,
-              cells: [
-                doc.name,
-                doc.type,
-                doc.uploaded_by,
-                new Date(doc.created_at).toLocaleDateString(),
-              ],
+              cells: [doc.name, doc.type, doc.uploaded_by, new Date(doc.created_at).toLocaleDateString()],
             }))}
             rowsPerPage={5}
           />
@@ -445,120 +387,119 @@ export default class ViewEditPanel extends React.Component<Props, State> {
     );
   }
 
-  // ---------------------------
-  // RENDER
-  // ---------------------------
   render() {
     const { isOpen, onClose, item } = this.props;
-    const { selectedTab } = this.state;
+    const { selectedTab, isAddQuantityOpen } = this.state;
 
     if (!item) return null;
 
     return (
-      <SidePanel
-        isOpen={isOpen}
-        onClose={onClose}
-        title={
-          <div style={{ borderTop: "1px solid #DFE1E6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
-              <CustomLozenge appearance="stat">
-                {item.status}
-              </CustomLozenge>
-              {this.renderExpirationLozenge(item.expiration)}
+      <>
+        <SidePanel
+          isOpen={isOpen}
+          onClose={onClose}
+          title={
+            <div style={{ borderTop: "1px solid #DFE1E6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
+                <CustomLozenge appearance="stat">{item.active ? "Active" : "Archived"}</CustomLozenge>
+                {this.renderExpirationLozenge(item.expiration)}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
+                <CustomLozenge appearance="unit_stat">
+                  {item.quantity} {item.unit_of_measure ?? "UNITS"}
+                </CustomLozenge>
+              </div>
             </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
-              <CustomLozenge appearance="unit_stat">
-                {item.quantity} {item.unit_of_measure ?? "UNITS"}
-              </CustomLozenge>
+          }
+          footer={
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, width: "100%" }}>
+              <CustomButton backgroundColor="#EBECF0" textColor="#172B4D" onClick={onClose}>
+                Cancel
+              </CustomButton>
+              {this.state.isEditing ? (
+                <CustomButton
+                  backgroundColor="#422670"
+                  textColor="#FFFFFF"
+                  onClick={async () => {
+                    if (!item) return;
+                    await updateItemDetails(item.id, this.state.form, "user@email.com");
+                    this.setState({ isEditing: false });
+                  }}
+                >
+                  Save Changes
+                </CustomButton>
+              ) : (
+                <CustomButton
+                  backgroundColor="#422670"
+                  textColor="#FFFFFF"
+                  iconBefore={<EditIcon label="Edit Item" />}
+                  onClick={() => this.setState({ isEditing: true })}
+                >
+                  Edit Item
+                </CustomButton>
+              )}
             </div>
-          </div>
-        }
-        footer={
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, width: "100%" }}>
-            <CustomButton backgroundColor="#EBECF0" textColor="#172B4D" onClick={onClose}>
-              Cancel
-            </CustomButton>
+          }
+        >
+          <SwappedPageHeader
+            title={item.item_description}
+            breadcrumbs={
+              <Breadcrumbs>
+                <BreadcrumbsItem text={item.reference_number ?? ""} />
+                <BreadcrumbsItem text={item.location ?? ""} />
+              </Breadcrumbs>
+            }
+          />
 
-            {this.state.isEditing ? (
-              <CustomButton
-                backgroundColor="#422670"
-                textColor="#FFFFFF"
-                onClick={async () => {
-                  const { item } = this.props;
-                  if (!item) return;
-
-                  await updateItemDetails(item.id, this.state.form, "user@email.com");
-                  this.setState({ isEditing: false });
+          <div style={{ display: "flex", width: "100%", borderBottom: "1px solid #DFE1E6", gap: 32, paddingTop: 12 }}>
+            {["Overview", "Activity", "Documentation", "Details"].map((tab) => (
+              <div
+                key={tab}
+                onClick={() => this.setState({ selectedTab: tab as State["selectedTab"] })}
+                style={{
+                  padding: "8px 0",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  borderBottom: selectedTab === tab ? "2px solid #422670" : "none",
+                  color: selectedTab === tab ? "#422670" : "#172B4D",
                 }}
               >
-                Save Changes
-              </CustomButton>
-            ) : (
-              <CustomButton
-                backgroundColor="#422670"
-                textColor="#FFFFFF"
-                iconBefore={<EditIcon label="Edit Item"/>}
-                onClick={() => this.setState({ isEditing: true })}
-              >
-                Edit Item
-              </CustomButton>
-            )}
+                {tab}
+              </div>
+            ))}
           </div>
-        }
-      >
-        <SwappedPageHeader
-          title={item.item_description}
-          breadcrumbs={
-            <Breadcrumbs>
-              <BreadcrumbsItem text={item.reference_number ?? ""} />
-              <BreadcrumbsItem text={item.location ?? ""} />
-            </Breadcrumbs>
-          }
-        />
 
-        {/* Tabs */}
-        <div style={{ display: "flex", width: '100%', borderBottom: "1px solid #DFE1E6", gap: 32, paddingTop: 12 }}>
-          {["Overview", "Activity", "Documentation", "Details"].map((tab) => (
-            <div
-              key={tab}
-              onClick={() => this.setState({ selectedTab: tab as State["selectedTab"] })}
-              style={{
-                padding: "8px 0",
-                cursor: "pointer",
-                fontWeight: 600,
-                borderBottom: selectedTab === tab ? "2px solid #422670" : "none",
-                color: selectedTab === tab ? "#422670" : "#172B4D",
-              }}
-            >
-              {tab}
-            </div>
-          ))}
-        </div>
+          <div style={{ marginTop: 16 }}>
+            {selectedTab === "Overview" && this.renderOverview()}
+            {selectedTab === "Activity" && (
+              <ScrollablePaginatedTable
+                columns={[
+                  { key: "activity", header: "Activity", width: 50 },
+                  { key: "quantity", header: "Quantity", width: 50 },
+                  { key: "reason", header: "Reason", width: 200 },
+                  { key: "user", header: "User", width: 100 },
+                  { key: "timestamp", header: "Date", width: 100 },
+                ]}
+                rows={this.state.activity.map((a) => ({
+                  key: a.key,
+                  cells: [a.activity, a.quantity, a.reason, a.user, new Date(a.timestamp).toLocaleDateString()],
+                }))}
+                rowsPerPage={8}
+              />
+            )}
+            {selectedTab === "Documentation" && this.renderDocumentation()}
+            {selectedTab === "Details" && this.renderDetails()}
+          </div>
+        </SidePanel>
 
-        {/* Content */}
-        <div style={{ marginTop: 16 }}>
-          {selectedTab === "Overview" && this.renderOverview()}
-          {selectedTab === "Activity" && (
-            <ScrollablePaginatedTable
-              columns={[
-                { key: "activity", header: "Activity", width: 50 },
-                { key: "quantity", header: "Quantity", width: 50 },
-                { key: "reason", header: "Reason", width: 200 },
-                { key: "user", header: "User", width: 100 },
-                { key: "timestamp", header: "Date", width: 100 },
-              ]}
-              rows={this.state.activity.map((a) => ({
-                key: a.key,
-                cells: [a.activity, a.quantity, a.reason, a.user, new Date(a.timestamp).toLocaleDateString()],
-              }))}
-              rowsPerPage={8}
-            />
-          )}
-          {selectedTab === "Documentation" && this.renderDocumentation()}
-          {selectedTab === "Details" && this.renderDetails()}
-        </div>
-      </SidePanel>
+        {isAddQuantityOpen && (
+          <AddQuantityModal
+            itemDescription={item.item_description}
+            onConfirm={(qty, notes) => this.handleAddQuantityConfirm(qty, notes)}
+            onClose={() => this.setState({ isAddQuantityOpen: false })}
+          />
+        )}
+      </>
     );
   }
 }

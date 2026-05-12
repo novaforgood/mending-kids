@@ -308,7 +308,7 @@ export default function AddItemPanel({
               </div>
 
               <div>
-                {label("Expiration Date", errors.expirationDate)}
+                {label("Expiration Date", false, errors.expirationDate)}
                 <Textfield
                   type="date"
                   placeholder="Select date"
@@ -340,7 +340,7 @@ export default function AddItemPanel({
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Market Value per Unit */}
               <div>
-                {label("Market Value per Unit", errors.marketValue)}
+                {label("Market Value per Unit", false, errors.marketValue)}
                 <Textfield
                   placeholder="Add market value"
                   value={marketValue}

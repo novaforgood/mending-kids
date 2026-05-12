@@ -34,6 +34,7 @@ export type InventoryItem = {
     uploaded_by: string;
     created_at: string;
   }[] | null;
+  active: boolean;
 };
 
 export interface ActivityEntry {
@@ -65,7 +66,7 @@ export interface State {
   isEditing: boolean;
   selectedTab: "Overview" | "Activity" | "Documentation" | "Details";
   activity: ActivityRow[];
-  form: UpdateItemDetailsPayload;
+  form: ItemForm;
 }
 
 export type InventoryPayload = {
@@ -95,8 +96,18 @@ export type UpdateItemDetailsPayload = Partial<{
   typical_shelf_life: string;
   location: string;
   internal_notes: string;
-  status: 'active' | 'archived';
+  active: boolean;
 }>;
+
+export type ItemForm = {
+  manufacturer: string;
+  reference_number: string;
+  lot_number: string;
+  unit_of_measure: string;
+  typical_shelf_life: string;
+  location: string;
+  internal_notes: string;
+};
 
 export type ActivityRow = {
   key: string;

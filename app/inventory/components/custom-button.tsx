@@ -6,6 +6,8 @@ type CustomButtonProps = ButtonProps & {
   backgroundColor?: string;
   textColor?: string;
   hoverColor?: string;
+  width?: string | number;
+  height?: string | number;
 };
 
 const CustomButton = ({
@@ -13,6 +15,8 @@ const CustomButton = ({
   backgroundColor = "#422670",
   textColor = "#FFFFFF",
   hoverColor = "#5A3A8C",
+  width,
+  height,
   iconBefore,
   ...props
 }: CustomButtonProps) => {
@@ -24,8 +28,14 @@ const CustomButton = ({
         backgroundColor,
         color: textColor,
         border: "none",
-      }}
-      onMouseEnter={(e) => {
+        width,
+        height,
+
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+      }}      onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = hoverColor;
       }}
       onMouseLeave={(e) => {

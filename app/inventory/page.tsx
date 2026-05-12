@@ -11,13 +11,14 @@ import DropdownMenu, {
   DropdownItemGroup,
 } from "@atlaskit/dropdown-menu";
 import CustomDatePicker from "./components/CustomDatePicker";
+import AddQuantityModal from "./components/AddQuantityModal";
 
 import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from "@atlaskit/icon/core/show-more-horizontal";
 import ChevronDownIcon from '@atlaskit/icon/core/chevron-down';
 
-import { fetchInventory, addItem, updateItemDocumentation, updateItemDetails, deleteItem } from "./utils/actions";
+import { fetchInventory, addItem, updateItemDocumentation, updateItemDetails, deleteItem, addItemQuantity } from "./utils/actions";
 import { fetchMissions } from "@/app/missions/actions";
 import DocumentationModal from "./components/documentation-modal";
 import AddItemPanel from "./components/add-item-panel";
@@ -51,6 +52,7 @@ export default function InventoryPage() {
   const [isMissionsDropdownOpen, setIsMissionsDropdownOpen] = useState(false);
   const [itemForAssignment, setItemForAssignment] = useState<InventoryItem | null>(null);
   const [availableMissions, setAvailableMissions] = useState<Array<{ id: number; mission_name: string }>>([]);
+  const [addQuantityItem, setAddQuantityItem] = useState<InventoryItem | null>(null);
 
   useEffect(() => {
     loadInventory();
@@ -149,7 +151,7 @@ export default function InventoryPage() {
     new Set(
       items
         .flatMap((i) =>
-          i.mission_inventory?.map((mi) => mi.missions?.mission_name).filter(Boolean) ?? []
+          i.mission_inventory?.map((mi) => mi.missions?.mission_name).filter((m): m is string => Boolean(m)) ?? []
         )
         .filter(Boolean)
     )
@@ -186,7 +188,7 @@ export default function InventoryPage() {
 
   const filteredItems = sortedItems.filter((item) => {
     const missionNames =
-      item.mission_inventory?.map((mi) => mi.missions?.mission_name).filter(Boolean) ?? [];
+      item.mission_inventory?.map((mi) => mi.missions?.mission_name).filter((m): m is string => Boolean(m)) ?? [];
 
     const matchesSearch =
       searchQuery.trim() === "" ||
@@ -213,22 +215,26 @@ export default function InventoryPage() {
   });
 
   const activeItems = filteredItems.filter((item) => {
-    if (item.status === "archived") return false;
-    if (item.expiration && item.expiration < new Date()) return false;
-    return true;
+    const usedQuantity = item.mission_inventory?.reduce(
+      (sum, mi) => sum + (mi.quantity_used ?? 0), 0
+    ) ?? 0;
+    const availableQuantity = item.quantity - usedQuantity;
+    return item.active && availableQuantity > 0;
   });
 
   const archivedItems = filteredItems.filter((item) => {
-    if (item.status === "archived") return true;
-    if (item.expiration && item.expiration < new Date()) return true;
-    return false;
+    const usedQuantity = item.mission_inventory?.reduce(
+      (sum, mi) => sum + (mi.quantity_used ?? 0), 0
+    ) ?? 0;
+    const availableQuantity = item.quantity - usedQuantity;
+    return !item.active || availableQuantity < 1;
   });
 
   const createRows = (data: InventoryItem[]) =>
     data.map((item) => {
       const usedQuantity =
         item.mission_inventory?.reduce(
-          (sum, missionItem) => sum + (missionItem.quantity ?? 0),
+          (sum, missionItem) => sum + (missionItem.quantity_used ?? 0),
           0
         ) ?? 0;
 
@@ -268,7 +274,11 @@ export default function InventoryPage() {
                 style={{ display: "flex", gap: 8 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <IconButton icon={AddIcon} label="Add" />
+                <IconButton
+                  icon={AddIcon}
+                  label="Add"
+                  onClick={() => setAddQuantityItem(item)}
+                />
 
                 <IconButton
                   icon={EditIcon}
@@ -292,23 +302,13 @@ export default function InventoryPage() {
                   <DropdownItemGroup>
                     <DropdownItem
                       onClick={async () => {
-                        const newStatus =
-                          item.status === "archived"
-                            ? "active"
-                            : "archived";
-
-                        await updateItemDetails(
-                          item.id,
-                          { status: newStatus },
-                          userEmail
-                        );
-
+                        await updateItemDetails(item.id, { active: !item.active }, userEmail);
                         await loadInventory();
                       }}
                     >
-                      {item.status === "archived"
-                        ? "Unarchive"
-                        : "Archive"}
+                      {item.active
+                        ? "Archive"
+                        : "Unarchive"}
                     </DropdownItem>
 
                     <DropdownItem
@@ -393,7 +393,7 @@ export default function InventoryPage() {
                   <span style={{ color: "#505258", fontWeight: 500 }}>
                     {selectedMission || "Mission"}
                   </span>
-                  <ChevronDownIcon style={{ color: "#505258" }} />
+                  <ChevronDownIcon label="" />
                 </button>
               )}
             >
@@ -583,6 +583,20 @@ export default function InventoryPage() {
           await loadInventory();
         }}
       />
+
+      {addQuantityItem && (
+        <AddQuantityModal
+          itemDescription={addQuantityItem.item_description}
+          onConfirm={async (qty, notes) => {
+            await addItemQuantity(addQuantityItem.id, qty, notes, userEmail);
+            await loadInventory();
+            setAddQuantityItem(null);
+          }}
+          onClose={() => setAddQuantityItem(null)}
+        />
+      )}
+
+
     </div>
   );
 }

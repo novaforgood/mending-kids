@@ -159,7 +159,7 @@ export default function CustomDynamicTable<T>({
         rowsPerPage={rowsPerPage}
         defaultPage={defaultPage}
         isFixedSize={isFixedSize}
-        emptyView={emptyView}
+        emptyView={emptyView as React.ReactElement}
       />
     </div>
   );
