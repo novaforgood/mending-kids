@@ -401,7 +401,7 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
           title={
             <div style={{ borderTop: "1px solid #DFE1E6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
-                <CustomLozenge appearance="stat">{item.active ? "Active" : "Archived"}</CustomLozenge>
+                <CustomLozenge appearance="stat">{item.status}</CustomLozenge>
                 {this.renderExpirationLozenge(item.expiration)}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
