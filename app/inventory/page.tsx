@@ -253,82 +253,17 @@ export default function InventoryPage() {
         </CustomButton>
       </div>
 
-    <div className="flex items-center justify-end mb-6">
-      {/* Filters */}
-      <div className="flex gap-2">
-        <div style={{ display: "flex", gap: 8 }}>
-          <DropdownMenu
-            trigger={({ triggerRef, ...triggerProps }) => (
-              <button
-                {...triggerProps}
-                ref={triggerRef}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 8,
-                  border: "1px solid #8C8F97",
-                  borderRadius: 6,
-                  padding: "6px 12px",
-                  width: 160,
-                  fontSize: 14,
-                  background: "white",
-                  cursor: "pointer",
-                }}
-              >
-                <span
-                  style={{
-                    color: '#505258',
-                    fontWeight: 500,
-                  }}
-                >{selectedMission || "Mission"}</span>
-                <ChevronDownIcon style={{ color: '#505258', label: "dropdown" }} />
-              </button>
-            )}
-          >
-            <DropdownItemGroup>
-              <DropdownItem onClick={() => setSelectedMission("")}>
-                All Missions
-              </DropdownItem>
-
-              {missionOptions.map((mission) => (
-                <DropdownItem
-                  key={mission}
-                  onClick={() => setSelectedMission(mission)}
-                >
-                  {mission}
-                </DropdownItem>
-              ))}
-            </DropdownItemGroup>
-          </DropdownMenu>
-        </div>
-        <CustomDatePicker
-          value={selectedExpiration}
-          onChange={setSelectedExpiration}
-          placeholder="Expiration"
-        />
-        {/* Search */}
-        <input
-          type="text"
-          placeholder="Search inventory..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            border: "1px solid #8C8F97",
-            borderRadius: 6,
-            padding: "6px 12px",
-            fontSize: 13,
-            width: 240,
-            outline: "none",
-          }}
-        />
-
-      </div>
-    </div>
-
-      {/* Tabs */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", borderBottom: "2px solid #DFE1E6", gap: 16 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          marginBottom: 16,
+          borderBottom: "2px solid #DFE1E6",
+        }}
+      >
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 16 }}>
           {["active", "archived"].map((tab) => (
             <div
               key={tab}
@@ -346,6 +281,81 @@ export default function InventoryPage() {
               {tab}
             </div>
           ))}
+        </div>
+
+        {/* Filters */}
+        <div className="flex items-center justify-center gap-2 -mt-3">
+          <div style={{ display: "flex" }}>
+            <DropdownMenu
+              trigger={({ triggerRef, ...triggerProps }) => (
+                <button
+                  {...triggerProps}
+                  ref={triggerRef}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    border: "1px solid #8C8F97",
+                    borderRadius: 6,
+                    padding: "6px 12px",
+                    width: 160,
+                    fontSize: 14,
+                    background: "white",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ color: "#505258", fontWeight: 500 }}>
+                    {selectedMission || "Mission"}
+                  </span>
+                  <ChevronDownIcon style={{ color: "#505258" }} />
+                </button>
+              )}
+            >
+              <DropdownItemGroup>
+                <DropdownItem onClick={() => setSelectedMission("")}>
+                  All Missions
+                </DropdownItem>
+
+                {missionOptions.map((mission) => (
+                  <DropdownItem
+                    key={mission}
+                    onClick={() => setSelectedMission(mission)}
+                  >
+                    {mission}
+                  </DropdownItem>
+                ))}
+              </DropdownItemGroup>
+            </DropdownMenu>
+          </div>
+
+          <div
+            style={{
+              marginBottom: 4,
+              marginTop: -2,
+            }}
+          >
+            <CustomDatePicker
+              value={selectedExpiration}
+              onChange={setSelectedExpiration}
+              placeholder="Expiration"
+            />
+          </div>
+
+          <input
+            type="text"
+            placeholder="Search inventory..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              border: "1px solid #8C8F97",
+              borderRadius: 6,
+              padding: "6px 12px",
+              fontSize: 13,
+              width: 240,
+              outline: "none",
+            }}
+          />
         </div>
       </div>
 
