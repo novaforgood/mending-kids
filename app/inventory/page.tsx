@@ -17,6 +17,7 @@ import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from "@atlaskit/icon/core/show-more-horizontal";
 import ChevronDownIcon from '@atlaskit/icon/core/chevron-down';
+import SearchIcon from '@atlaskit/icon/core/search';
 
 import { fetchInventory, addItem, updateItemDocumentation, updateItemDetails, deleteItem, addItemQuantity } from "./utils/actions";
 import { fetchMissions } from "@/app/missions/actions";
@@ -427,20 +428,33 @@ export default function InventoryPage() {
             />
           </div>
 
-          <input
-            type="text"
-            placeholder="Search inventory..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+          <div
             style={{
+              display: "flex",
+              alignItems: "center",
               border: "1px solid #8C8F97",
               borderRadius: 6,
-              padding: "6px 12px",
-              fontSize: 13,
+              padding: "0 10px",
               width: 240,
-              outline: "none",
+              background: "white",
             }}
-          />
+          >
+            <SearchIcon label="Search" size="small" />
+
+            <input
+              type="text"
+              placeholder="Search inventory..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                border: "none",
+                outline: "none",
+                fontSize: 13,
+                padding: "6px 8px",
+                width: "100%",
+              }}
+            />
+          </div>
         </div>
       </div>
 
