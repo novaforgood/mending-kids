@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useAuthUser } from "@/app/hooks/authUser";
 
 export default function AuthProvider({
@@ -7,9 +8,10 @@ export default function AuthProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuthUser();
+  const pathname = usePathname();
+  const { loading } = useAuthUser();
 
-  if (loading) return <p className="p-6">Loading...</p>;
+  if (loading && pathname !== "/login") return <p className="p-6">Loading...</p>;
 
   return <>{children}</>;
 }
