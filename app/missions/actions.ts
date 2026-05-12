@@ -120,6 +120,8 @@ export async function fetchMissionDetail(missionId: number) {
     .select(`
       id,
       quantity_used,
+      bag_number,
+      status,
       inventory:inventory_id ( * )
     `)
     .eq("mission_id", missionId);
@@ -156,7 +158,7 @@ export async function addMissionItem(input: {
 
   const { data: inv, error: fetchError } = await supabaseServer
     .from("inventory")
-    .select("quantity")
+    .select("quantity, item_description")
     .eq("id", input.inventory_id)
     .single();
   if (fetchError) throw new Error(fetchError.message);
@@ -227,24 +229,113 @@ export async function deleteMissionMember(id: number) {
 
 /** 6) Update quantity for an item on a mission */
 export async function updateMissionItem(id: number, quantity: number) {
+  const { data: mi, error: fetchError } = await supabaseServer
+    .from("mission_inventory")
+    .select("inventory_id, mission_id, quantity_used")
+    .eq("id", id)
+    .single();
+  if (fetchError) throw new Error(fetchError.message);
+
+  const { data: inv, error: invError } = await supabaseServer
+    .from("inventory")
+    .select("item_description")
+    .eq("id", mi.inventory_id)
+    .single();
+  if (invError) throw new Error(invError.message);
+
   await requireAdmin();
 
   const { error } = await supabaseServer
     .from("mission_inventory")
     .update({ quantity_used: quantity })
     .eq("id", id);
+  if (error) throw new Error(error.message);
 
+  await supabaseServer.from("activity_log").insert({
+    action_type: "updated",
+    performed_by: "system",
+    description: `Updated quantity from ${mi.quantity_used} to ${quantity} for "${inv.item_description}" on mission`,
+    item_name: inv.item_description,
+    quantity: quantity,
+    mission_id: mi.mission_id,
+    inventory_id: mi.inventory_id,
+  });
+}
+
+/** Update status for a mission inventory item */
+export async function updateMissionItemStatus(id: number, status: string | null) {
+  const { error } = await supabaseServer
+    .from("mission_inventory")
+    .update({ status })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+
+  if (status === "RETURNED") {
+    const { data: mi, error: fetchError } = await supabaseServer
+      .from("mission_inventory")
+      .select("inventory_id")
+      .eq("id", id)
+      .single();
+    if (fetchError) throw new Error(fetchError.message);
+
+    const { error: updateError } = await supabaseServer
+      .from("inventory")
+      .update({ quantity: 0 })
+      .eq("id", mi.inventory_id);
+    if (updateError) throw new Error(updateError.message);
+  }
+}
+
+/** Update bag number for a mission inventory item */
+export async function updateMissionItemBag(id: number, bagNumber: number | null) {
+  const { error } = await supabaseServer
+    .from("mission_inventory")
+    .update({ bag_number: bagNumber })
+    .eq("id", id);
   if (error) throw new Error(error.message);
 }
 
 /** 7) Remove an item from a mission */
 export async function deleteMissionItem(id: number) {
+  const { data: mi, error: fetchError } = await supabaseServer
+    .from("mission_inventory")
+    .select("inventory_id, mission_id, quantity_used")
+    .eq("id", id)
+    .single();
+  if (fetchError) throw new Error(fetchError.message);
+
+  const { data: inv, error: invError } = await supabaseServer
+    .from("inventory")
+    .select("item_description")
+    .eq("id", mi.inventory_id)
+    .single();
+  if (invError) throw new Error(invError.message);
+
   await requireAdmin();
 
-  const { error } = await supabaseServer
+  const {error} = await supabaseServer
     .from("mission_inventory")
     .delete()
     .eq("id", id);
 
+  if (error) throw new Error(error.message);
+
+  await supabaseServer.from("activity_log").insert({
+    action_type: "removed",
+    performed_by: "system",
+    description: `Removed ${mi.quantity_used} unit(s) of "${inv.item_description}" from mission`,
+    item_name: inv.item_description,
+    quantity: mi.quantity_used,
+    mission_id: mi.mission_id,
+    inventory_id: mi.inventory_id,
+  });
+}
+
+/** Delete a mission entirely */
+export async function deleteMission(id: number) {
+  const { error } = await supabaseServer
+    .from("missions")
+    .delete()
+    .eq("id", id);
   if (error) throw new Error(error.message);
 }

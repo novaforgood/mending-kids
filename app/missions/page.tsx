@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { fetchMissions } from "./actions";
+import { useEffect, useRef, useState } from "react";
+import { fetchMissions, updateMission, deleteMission } from "./actions";
 import { useRouter } from "next/navigation";
 import AddMissionPanel from "./AddMissionPanel";
 
@@ -33,7 +33,70 @@ function formatDate(iso: string | null) {
   return `${parseInt(m)}/${parseInt(d)}/${y.slice(2)}`;
 }
 
-function MissionCard({ mission, onClick }: { mission: Mission; onClick: () => void }) {
+function MenuOption({
+  label,
+  onClick,
+  danger,
+}: {
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        padding: "8px 16px",
+        fontSize: 14,
+        color: danger ? "#DC2626" : "#111827",
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+      }}
+      onMouseEnter={(e) =>
+        ((e.currentTarget as HTMLButtonElement).style.background = danger ? "#FEF2F2" : "#F9FAFB")
+      }
+      onMouseLeave={(e) =>
+        ((e.currentTarget as HTMLButtonElement).style.background = "none")
+      }
+    >
+      {label}
+    </button>
+  );
+}
+
+function MissionCard({
+  mission,
+  tab,
+  onClick,
+  onArchive,
+  onRestore,
+  onDelete,
+}: {
+  mission: Mission;
+  tab: "current" | "archive";
+  onClick: () => void;
+  onArchive: () => void;
+  onRestore: () => void;
+  onDelete: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
+
   const startFmt = formatDate(mission.start_date);
   const endFmt = formatDate(mission.end_date);
   const dateRange = [startFmt, endFmt].filter(Boolean).join(" – ");
@@ -97,13 +160,44 @@ function MissionCard({ mission, onClick }: { mission: Mission; onClick: () => vo
           <span className="mx-1">·</span>
           {memberCount} people
         </span>
-        <button
-          className="text-gray-400 hover:text-gray-600 font-bold text-lg leading-none"
-          onClick={(e) => e.stopPropagation()}
-          title="More options"
-        >
-          ···
-        </button>
+        <div ref={menuRef} className="relative">
+          <button
+            className="text-gray-400 hover:text-gray-600 font-bold text-lg leading-none"
+            onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
+            title="More options"
+          >
+            ···
+          </button>
+          {menuOpen && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "absolute",
+                right: 0,
+                bottom: "calc(100% + 4px)",
+                zIndex: 10,
+                background: "#fff",
+                border: "1px solid #E5E7EB",
+                borderRadius: 8,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                minWidth: 140,
+                padding: "4px 0",
+              }}
+            >
+              {tab === "current" && (
+                <>
+                  <MenuOption label="View"    onClick={() => { setMenuOpen(false); onClick(); }} />
+                  <MenuOption label="Edit"    onClick={() => { setMenuOpen(false); onClick(); }} />
+                  <MenuOption label="Archive" onClick={() => { setMenuOpen(false); onArchive(); }} />
+                </>
+              )}
+              {tab === "archive" && (
+                <MenuOption label="Restore" onClick={() => { setMenuOpen(false); onRestore(); }} />
+              )}
+              <MenuOption label="Delete" onClick={() => { setMenuOpen(false); onDelete(); }} danger />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -127,17 +221,35 @@ export default function MissionsPage() {
     }
   }
 
+  async function handleArchive(id: number) {
+    try { await updateMission(id, { status: "archived" }); await loadMissions(); }
+    catch (err) { console.error(err); }
+  }
+
+  async function handleRestore(id: number) {
+    try { await updateMission(id, { status: "active" }); await loadMissions(); }
+    catch (err) { console.error(err); }
+  }
+
+  async function handleDelete(id: number) {
+    if (!window.confirm("Permanently delete this mission? This cannot be undone.")) return;
+    try { await deleteMission(id); await loadMissions(); }
+    catch (err) { console.error(err); }
+  }
+
   useEffect(() => {
     loadMissions();
   }, []);
 
   const today = new Date().toISOString().split("T")[0];
 
-  const tabFiltered = missions.filter((m) =>
-    activeTab === "archive"
-      ? m.end_date && m.end_date < today
-      : !m.end_date || m.end_date >= today
-  );
+  const tabFiltered = missions.filter((m) => {
+    const manuallyArchived = m.status === "archived";
+    const restored = m.status === "active";
+    const pastEndDate = !!m.end_date && m.end_date < today;
+    const goesToArchive = manuallyArchived || (!restored && pastEndDate);
+    return activeTab === "archive" ? goesToArchive : !goesToArchive;
+  });
 
   const displayed = tabFiltered.filter((m) => {
     if (selectedCategory && m.category !== selectedCategory) return false;
@@ -285,7 +397,11 @@ export default function MissionsPage() {
             <MissionCard
               key={mission.id}
               mission={mission}
+              tab={activeTab}
               onClick={() => router.push(`/missions/${mission.id}`)}
+              onArchive={() => handleArchive(mission.id)}
+              onRestore={() => handleRestore(mission.id)}
+              onDelete={() => handleDelete(mission.id)}
             />
           ))}
         </div>
