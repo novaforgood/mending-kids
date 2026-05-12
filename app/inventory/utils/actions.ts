@@ -49,7 +49,7 @@ export async function fetchItemActivityLog(inventoryId: number) {
 export async function fetchInventory() {
   const { data, error } = await supabaseServer
     .from("inventory")
-    .select("*")
+    .select(`*, mission_inventory(mission_id, quantity_used, missions(mission_name))`)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -165,7 +165,7 @@ export async function updateItemQuantity(
 ) {
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
-    .select("quantity, item_description, status, market_value_per_unit")
+    .select("quantity, item_description, active, market_value_per_unit")
     .eq("id", id)
     .single();
 
@@ -176,9 +176,7 @@ export async function updateItemQuantity(
     total_value: newQuantity * oldItem.market_value_per_unit,
   };
 
-  if (newQuantity === 0) {
-    updates.status = "archived";
-  }
+  updates.active = newQuantity > 0;
 
   const { error } = await supabaseServer
     .from("inventory")
@@ -199,9 +197,9 @@ export async function updateItemQuantity(
       },
       ...(newQuantity === 0
         ? {
-            status: {
-              old: oldItem.status,
-              new: "archived",
+            active: {
+              old: String(oldItem.active),
+              new: "false",
             },
           }
         : {}),
@@ -218,7 +216,7 @@ export async function updateItemDetails(
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
     .select(
-      "manufacturer, reference_number, lot_number, unit_of_measure, typical_shelf_life, location, internal_notes, item_description"
+      "manufacturer, reference_number, lot_number, unit_of_measure, typical_shelf_life, location, internal_notes, item_description, active"
     )
     .eq("id", id)
     .single();
@@ -287,6 +285,12 @@ export async function updateItemDetails(
       new: payload.internal_notes || "",
     };
   }
+  if (payload.active !== undefined) {
+    changes.active = {
+      old: String(oldItem.active),
+      new: String(payload.active),
+    };
+  }
 
   await logInventoryChange(
     "edited",
@@ -295,4 +299,76 @@ export async function updateItemDetails(
     oldItem.item_description,
     changes
   );
+}
+
+/* Add quantity to an existing item + record an inventory entry */
+export async function addItemQuantity(
+  id: number,
+  quantityToAdd: number,
+  notes: string,
+  userEmail: string
+) {
+  // Fetch current item state
+  const { data: oldItem, error: fetchError } = await supabaseServer
+    .from("inventory")
+    .select("quantity, item_description, market_value_per_unit, status")
+    .eq("id", id)
+    .single();
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  const newQuantity = oldItem.quantity + quantityToAdd;
+  const newTotalValue = money2(newQuantity * (oldItem.market_value_per_unit ?? 0));
+
+  // Update inventory row
+  const { error: updateError } = await supabaseServer
+    .from("inventory")
+    .update({
+      quantity: newQuantity,
+      total_value: newTotalValue,
+      // Re-activate if it was archived/depleted
+      ...(oldItem.status === "archived" ? { status: "active" } : {}),
+    })
+    .eq("id", id);
+
+  if (updateError) throw new Error(updateError.message);
+
+  // Insert into inventory_entries table
+  const { error: entryError } = await supabaseServer
+    .from("inventory_entries")
+    .insert({
+      inventory_id: id,
+      quantity_added: quantityToAdd,
+      notes: notes || null,
+      added_by: userEmail,
+      date_added: new Date().toISOString().split("T")[0], // YYYY-MM-DD
+    });
+
+  if (entryError) throw new Error(entryError.message);
+
+  // Log to activity_log
+  await logInventoryChange(
+    "added",
+    userEmail,
+    id,
+    oldItem.item_description,
+    {
+      quantity: {
+        old: String(oldItem.quantity),
+        new: String(newQuantity),
+      },
+    }
+  );
+}
+
+/* Fetch all inventory entries for a given item */
+export async function fetchInventoryEntries(inventoryId: number) {
+  const { data, error } = await supabaseServer
+    .from("inventory_entries")
+    .select("*")
+    .eq("inventory_id", inventoryId)
+    .order("date_added", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data;
 }

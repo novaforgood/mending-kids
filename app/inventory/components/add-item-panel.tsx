@@ -36,6 +36,7 @@ export default function AddItemPanel({
   const [lotNumber, setLotNumber] = useState("");
   const [unitOfMeasure, setUnitOfMeasure] = useState("");
   const [typicalShelfLife, setTypicalShelfLife] = useState("");
+  const [quantity, setQuantity] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
   const [location, setLocation] = useState("");
 
@@ -97,15 +98,14 @@ export default function AddItemPanel({
     const e: Record<string, string> = {};
     if (!itemDescription.trim()) e.itemDescription = "Required";
     if (!unitOfMeasure) e.unitOfMeasure = "Required";
-    if (!expirationDate) e.expirationDate = "Required";
     if (!location) e.location = "Required";
+    if (!quantity) e.quantity = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
   function validateStep2(): boolean {
     const e: Record<string, string> = {};
-    if (!marketValue || isNaN(parseFloat(marketValue))) e.marketValue = "Required";
     if (!acquisitionMethod) e.acquisitionMethod = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -128,8 +128,8 @@ export default function AddItemPanel({
         market_value_per_unit: parseFloat(marketValue) || 0,
         valuation_source: valuationSource,
         acquisition_method: acquisitionMethod,
-        quantity: 0,
-        status: "",
+        quantity: parseInt(quantity) || 0,
+        status: "IN STORAGE",
         mission: "",
       });
     }
@@ -299,7 +299,16 @@ export default function AddItemPanel({
               </div>
 
               <div>
-                {label("Expiration Date", true, errors.expirationDate)}
+                {label("Quantity", true, errors.quantity)}
+                <Textfield
+                  placeholder="Add quantity"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.currentTarget.value)}
+                />
+              </div>
+
+              <div>
+                {label("Expiration Date", false, errors.expirationDate)}
                 <Textfield
                   type="date"
                   placeholder="Select date"
@@ -331,7 +340,7 @@ export default function AddItemPanel({
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Market Value per Unit */}
               <div>
-                {label("Market Value per Unit", true, errors.marketValue)}
+                {label("Market Value per Unit", false, errors.marketValue)}
                 <Textfield
                   placeholder="Add market value"
                   value={marketValue}

@@ -14,6 +14,7 @@
   "dependencies": {
     "@atlaskit/app-provider": "^4.2.3",
     "@atlaskit/breadcrumbs": "^15.3.20",
+    "@atlaskit/datetime-picker": "^17.8.0",
     "@atlaskit/drawer": "^11.0.29",
     "@atlaskit/dropdown-menu": "^16.4.6",
     "@atlaskit/dynamic-table": "^18.3.16",
