@@ -36,6 +36,7 @@ export default function AddItemPanel({
   const [lotNumber, setLotNumber] = useState("");
   const [unitOfMeasure, setUnitOfMeasure] = useState("");
   const [typicalShelfLife, setTypicalShelfLife] = useState("");
+  const [quantity, setQuantity] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
   const [location, setLocation] = useState("");
 
@@ -98,6 +99,7 @@ export default function AddItemPanel({
     if (!itemDescription.trim()) e.itemDescription = "Required";
     if (!unitOfMeasure) e.unitOfMeasure = "Required";
     if (!location) e.location = "Required";
+    if (!quantity) e.quantity = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -126,8 +128,8 @@ export default function AddItemPanel({
         market_value_per_unit: parseFloat(marketValue) || 0,
         valuation_source: valuationSource,
         acquisition_method: acquisitionMethod,
-        quantity: 0,
-        status: "",
+        quantity: parseInt(quantity) || 0,
+        status: "IN STORAGE",
         mission: "",
       });
     }
@@ -294,6 +296,15 @@ export default function AddItemPanel({
                     onChange={(e) => setTypicalShelfLife(e.currentTarget.value)}
                   />
                 </div>
+              </div>
+
+              <div>
+                {label("Quantity", true, errors.quantity)}
+                <Textfield
+                  placeholder="Add quantity"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.currentTarget.value)}
+                />
               </div>
 
               <div>

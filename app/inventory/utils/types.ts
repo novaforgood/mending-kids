@@ -58,6 +58,7 @@ export interface Props {
   onClose: () => void;
   item: InventoryItem | null;
   setItems?: React.Dispatch<React.SetStateAction<InventoryItem[]>>;
+  onAssignToMission?: () => void;
 }
 
 export interface State {

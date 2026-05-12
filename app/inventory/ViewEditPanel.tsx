@@ -10,7 +10,6 @@ import { SwappedPageHeader } from "./components/swapped-page-header";
 
 import ScrollablePaginatedTable from "./components/scrollable-table";
 
-import { InventoryItem } from "./utils/types";
 import { SidePanel } from "./components/SidePanel";
 import { fetchItemActivityLog, updateItemDetails } from "./utils/actions";
 
@@ -153,12 +152,13 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             hoverColor="#B63A69"
             textColor="#FFFFFF"
             iconBefore={<GlobeIcon label="Assign to Mission"/>}
+            onClick={this.props.onAssignToMission}
           >
             Assign to Mission
           </CustomButton>
         </div>
 
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 32 }}>
           <div
             style={{
               marginBottom: 12,
@@ -177,6 +177,21 @@ export default class ViewEditPanel extends React.Component<Props, State> {
             {`${item.quantity} ${(item.unit_of_measure ?? "UNITS").toUpperCase()}`}
           </CustomLozenge>
         </div>
+
+        <div
+          style={{
+            marginBottom: 12,
+            color: "#505258",
+            fontFamily: "Atlassian Sans, sans-serif",
+            fontSize: 16,
+            fontWeight: 653,
+            lineHeight: "24px",
+            fontFeatureSettings: "'liga' off, 'calt' off",
+          }}
+        >
+          Inventory Entries Table
+        </div>
+
 
         <ScrollablePaginatedTable
           columns={[
@@ -447,14 +462,16 @@ export default class ViewEditPanel extends React.Component<Props, State> {
           <div style={{ borderTop: "1px solid #DFE1E6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
               <CustomLozenge appearance="stat">
-                IN STORAGE
+                {item.status}
               </CustomLozenge>
               {this.renderExpirationLozenge(item.expiration)}
             </div>
 
-            <CustomLozenge appearance="unit_stat">
-              {item.quantity} {item.unit_of_measure ?? "UNITS"}
-            </CustomLozenge>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
+              <CustomLozenge appearance="unit_stat">
+                {item.quantity} {item.unit_of_measure ?? "UNITS"}
+              </CustomLozenge>
+            </div>
           </div>
         }
         footer={

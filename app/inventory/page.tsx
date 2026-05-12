@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import CustomDynamicTable from "./components/custom-dynamic-table";
 import CustomButton from "./components/custom-button";
 import { IconButton } from "@atlaskit/button/new";
@@ -17,6 +18,7 @@ import MoreIcon from "@atlaskit/icon/core/show-more-horizontal";
 import ChevronDownIcon from '@atlaskit/icon/core/chevron-down';
 
 import { fetchInventory, addItem, updateItemDocumentation, updateItemDetails, deleteItem } from "./utils/actions";
+import { fetchMissions } from "@/app/missions/actions";
 import DocumentationModal from "./components/documentation-modal";
 import AddItemPanel from "./components/add-item-panel";
 
@@ -26,6 +28,7 @@ import { supabase } from "@/lib/supabase/supabaseClient";
 
 
 export default function InventoryPage() {
+  const router = useRouter();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string>("anonymous");
@@ -45,10 +48,24 @@ export default function InventoryPage() {
   const [selectedMission, setSelectedMission] = useState("");
   const [selectedExpiration, setSelectedExpiration] = useState("");
 
+  const [isMissionsDropdownOpen, setIsMissionsDropdownOpen] = useState(false);
+  const [itemForAssignment, setItemForAssignment] = useState<InventoryItem | null>(null);
+  const [availableMissions, setAvailableMissions] = useState<Array<{ id: number; mission_name: string }>>([]);
+
   useEffect(() => {
     loadInventory();
     getUser();
+    loadMissions();
   }, []);
+
+  async function loadMissions() {
+    try {
+      const missions = await fetchMissions();
+      setAvailableMissions(missions.map((m: { id: number; mission_name: string }) => ({ id: m.id, mission_name: m.mission_name })));
+    } catch {
+      setAvailableMissions([]);
+    }
+  }
 
   async function getUser() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -138,6 +155,35 @@ export default function InventoryPage() {
     )
   );
 
+  // Get available missions with their IDs
+  const availableMissionsWithIds = Array.from(
+    new Map(
+      items
+        .flatMap((i) =>
+          i.mission_inventory?.map((mi) => [
+            mi.mission_id,
+            mi.missions?.mission_name ?? "Unknown",
+          ]) ?? []
+        )
+        .entries()
+    )
+  ).map(([id, name]) => ({ id, name }));
+
+  const handleAssignToMission = () => {
+    if (selectedItem) {
+      setItemForAssignment(selectedItem);
+      setIsMissionsDropdownOpen(true);
+    }
+  };
+
+  const handleMissionSelect = (missionId: number) => {
+    if (itemForAssignment) {
+      router.push(`/missions/${missionId}/add-items?preSelectedItemId=${itemForAssignment.id}`);
+      setIsMissionsDropdownOpen(false);
+      setIsViewPanelOpen(false);
+    }
+  };
+
   const filteredItems = sortedItems.filter((item) => {
     const missionNames =
       item.mission_inventory?.map((mi) => mi.missions?.mission_name).filter(Boolean) ?? [];
@@ -179,69 +225,108 @@ export default function InventoryPage() {
   });
 
   const createRows = (data: InventoryItem[]) =>
-    data.map((item) => ({
-      key: String(item.id),
-      item,
-      cells: [
-        { content: <Cell>{item.item_description}</Cell> },
-        { content: <Cell>{item.manufacturer}</Cell> },
-        { content: <Cell>{item.reference_number}</Cell> },
-        { content: <Cell><CustomLozenge>{item.quantity}</CustomLozenge></Cell> },
-        { content: <Cell>{item.location}</Cell> },
-        { content: <Cell>{item.expiration.toLocaleDateString()}</Cell> },
-        {
-          content: (
-            <div style={{ display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
-              <IconButton icon={AddIcon} label="Add" />
-              <IconButton
-                icon={EditIcon}
-                label="Edit"
-                onClick={() => {
-                  setSelectedItem(item);
-                  setIsViewPanelOpen(true);
-                }}
-              />
-              <DropdownMenu
-                trigger={({ triggerRef, ...triggerProps }) => (
-                  <IconButton
-                    {...triggerProps}
-                    ref={triggerRef}
-                    icon={MoreIcon}
-                    label="More"
-                  />
-                )}
+    data.map((item) => {
+      const usedQuantity =
+        item.mission_inventory?.reduce(
+          (sum, missionItem) => sum + (missionItem.quantity ?? 0),
+          0
+        ) ?? 0;
+
+      const availableQuantity = item.quantity - usedQuantity;
+
+      return {
+        key: String(item.id),
+        item,
+        cells: [
+          { content: <Cell>{item.item_description}</Cell> },
+
+          { content: <Cell>{item.manufacturer}</Cell> },
+
+          { content: <Cell>{item.reference_number}</Cell> },
+
+          {
+            content: (
+              <Cell>
+                <CustomLozenge>{availableQuantity}</CustomLozenge>
+              </Cell>
+            ),
+          },
+
+          { content: <Cell>{item.location}</Cell> },
+
+          {
+            content: (
+              <Cell>
+                {item.expiration.toLocaleDateString()}
+              </Cell>
+            ),
+          },
+
+          {
+            content: (
+              <div
+                style={{ display: "flex", gap: 8 }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <DropdownItemGroup>
-                <DropdownItem
-                  onClick={async () => {
-                    const newStatus = item.status === "archived" ? "active" : "archived";
+                <IconButton icon={AddIcon} label="Add" />
 
-                    await updateItemDetails(
-                      item.id,
-                      { status: newStatus },
-                      userEmail
-                    );
-
-                    await loadInventory();
+                <IconButton
+                  icon={EditIcon}
+                  label="Edit"
+                  onClick={() => {
+                    setSelectedItem(item);
+                    setIsViewPanelOpen(true);
                   }}
+                />
+
+                <DropdownMenu
+                  trigger={({ triggerRef, ...triggerProps }) => (
+                    <IconButton
+                      {...triggerProps}
+                      ref={triggerRef}
+                      icon={MoreIcon}
+                      label="More"
+                    />
+                  )}
                 >
-                  {item.status === "archived" ? "Unarchive" : "Archive"}
-                </DropdownItem>
-                  <DropdownItem
-                    onClick={async () => {
-                      await deleteItem(item.id, userEmail);
-                      console.log("Delete item");
-                    }}
-                  >
-                    Delete
-                  </DropdownItem>
-                </DropdownItemGroup>
-              </DropdownMenu>
-            </div>
-          ),
-        },
-      ],
-    }));
+                  <DropdownItemGroup>
+                    <DropdownItem
+                      onClick={async () => {
+                        const newStatus =
+                          item.status === "archived"
+                            ? "active"
+                            : "archived";
+
+                        await updateItemDetails(
+                          item.id,
+                          { status: newStatus },
+                          userEmail
+                        );
+
+                        await loadInventory();
+                      }}
+                    >
+                      {item.status === "archived"
+                        ? "Unarchive"
+                        : "Archive"}
+                    </DropdownItem>
+
+                    <DropdownItem
+                      onClick={async () => {
+                        await deleteItem(item.id, userEmail);
+                        console.log("Delete item");
+                      }}
+                    >
+                      Delete
+                    </DropdownItem>
+                  </DropdownItemGroup>
+                </DropdownMenu>
+              </div>
+            ),
+          },
+        ],
+      };
+    });
 
   return (
     <div style={{ padding: 32 }}>
@@ -395,7 +480,85 @@ export default function InventoryPage() {
         onClose={() => setIsViewPanelOpen(false)}
         item={selectedItem}
         setItems={setItems}
+        onAssignToMission={handleAssignToMission}
       />
+
+      {/* Missions Dropdown Overlay */}
+      {isMissionsDropdownOpen && availableMissionsWithIds.length > 0 && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0, 0, 0, 0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1200,
+          }}
+          onClick={() => setIsMissionsDropdownOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: 8,
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+              minWidth: 300,
+              maxWidth: 500,
+              maxHeight: 400,
+              overflow: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: 16,
+                borderBottom: "1px solid #DFE1E6",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              Select a Mission to Assign To
+            </div>
+            <div>
+              {availableMissionsWithIds.map((mission) => (
+                <div
+                  key={mission.id}
+                  onClick={() => handleMissionSelect(mission.id)}
+                  style={{
+                    padding: "12px 16px",
+                    cursor: "pointer",
+                    borderBottom: "1px solid #F1F2F4",
+                    transition: "background-color 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#F7F8F9";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }}
+                >
+                  {mission.name}
+                </div>
+              ))}
+              {availableMissionsWithIds.length === 0 && (
+                <div
+                  style={{
+                    padding: 16,
+                    textAlign: "center",
+                    color: "#6B778C",
+                    fontSize: 13,
+                  }}
+                >
+                  No active missions available
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <AddItemPanel
         isOpen={isPanelOpen}
