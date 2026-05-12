@@ -22,15 +22,23 @@ type MissionExportRow = {
   total_value: number;
 };
 
+type JoinedInventory = {
+  item_description: string | null;
+  manufacturer: string | null;
+  reference_number: string | null;
+  market_value_per_unit: number | null;
+};
+
 type MissionInventoryJoinedRow = {
   quantity_used: number | null;
-  inventory: {
-    item_description: string | null;
-    manufacturer: string | null;
-    reference_number: string | null;
-    market_value_per_unit: number | null;
-  } | null;
+  inventory: JoinedInventory | JoinedInventory[] | null;
 };
+
+function pickInventory(inv: MissionInventoryJoinedRow["inventory"]): JoinedInventory | null {
+  if (!inv) return null;
+  if (Array.isArray(inv)) return inv[0] ?? null;
+  return inv;
+}
 
 function cellValue(item: MissionExportRow, col: Col): string {
   const v = item[col.key];
@@ -64,13 +72,14 @@ async function fetchMissionItems(missionId: number): Promise<{ missionName: stri
     .eq("mission_id", missionId);
   if (error) throw new Error(error.message);
 
-  const rows: MissionExportRow[] = ((data ?? []) as MissionInventoryJoinedRow[]).map((row) => {
+  const rows: MissionExportRow[] = ((data ?? []) as unknown as MissionInventoryJoinedRow[]).map((row) => {
     const qty = Number(row.quantity_used ?? 0);
-    const unit = Number(row.inventory?.market_value_per_unit ?? 0);
+    const inv = pickInventory(row.inventory);
+    const unit = Number(inv?.market_value_per_unit ?? 0);
     return {
-      item_description: row.inventory?.item_description ?? "—",
-      manufacturer: row.inventory?.manufacturer ?? "—",
-      reference_number: row.inventory?.reference_number ?? "—",
+      item_description: inv?.item_description ?? "—",
+      manufacturer: inv?.manufacturer ?? "—",
+      reference_number: inv?.reference_number ?? "—",
       quantity_used: qty,
       market_value_per_unit: unit,
       total_value: Math.round(qty * unit * 100) / 100,

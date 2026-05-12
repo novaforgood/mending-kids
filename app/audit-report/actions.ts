@@ -13,14 +13,23 @@ type InventoryRow = {
   acquisition_method: string | null;
 };
 
+type JoinedMission = { mission_name: string | null; start_date: string | null };
+type JoinedInventory = {
+  item_description: string | null;
+  market_value_per_unit: number | null;
+};
+
 type MissionUsageRow = {
   quantity_used: number | null;
-  missions: { mission_name: string | null; start_date: string | null } | null;
-  inventory: {
-    item_description: string | null;
-    market_value_per_unit: number | null;
-  } | null;
+  missions: JoinedMission | JoinedMission[] | null;
+  inventory: JoinedInventory | JoinedInventory[] | null;
 };
+
+function pickOne<T>(v: T | T[] | null | undefined): T | null {
+  if (!v) return null;
+  if (Array.isArray(v)) return v[0] ?? null;
+  return v;
+}
 
 export type AuditLine = {
   label: string;
@@ -76,8 +85,8 @@ export async function fetchAuditReport(year: number): Promise<AuditReportData> {
     .select("quantity_used, missions:mission_id(mission_name,start_date), inventory:inventory_id(item_description,market_value_per_unit)");
   if (missionError) throw new Error(missionError.message);
 
-  const invRows = (inventory ?? []) as InventoryRow[];
-  const usageRows = (missionUsage ?? []) as MissionUsageRow[];
+  const invRows = (inventory ?? []) as unknown as InventoryRow[];
+  const usageRows = (missionUsage ?? []) as unknown as MissionUsageRow[];
 
   const donatedLines = invRows
     .filter((r) => (r.acquisition_method ?? "").toLowerCase() === "donation" && inYear(r.created_at, year))
@@ -93,12 +102,14 @@ export async function fetchAuditReport(year: number): Promise<AuditReportData> {
 
   const byMission = new Map<string, MissionUsageSummary>();
   for (const row of usageRows) {
-    if (!inYear(row.missions?.start_date ?? null, year)) continue;
-    const missionName = row.missions?.mission_name || "Unnamed Mission";
+    const mission = pickOne(row.missions);
+    const inv = pickOne(row.inventory);
+    if (!inYear(mission?.start_date ?? null, year)) continue;
+    const missionName = mission?.mission_name || "Unnamed Mission";
     const qty = Number(row.quantity_used ?? 0);
-    const unitValue = Number(row.inventory?.market_value_per_unit ?? 0);
+    const unitValue = Number(inv?.market_value_per_unit ?? 0);
     const line: AuditLine = {
-      label: row.inventory?.item_description || "Unknown item",
+      label: inv?.item_description || "Unknown item",
       quantity: qty,
       unitValue,
       totalValue: money2(qty * unitValue),
