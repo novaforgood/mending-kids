@@ -35,6 +35,7 @@
     "atlaskit": "^0.0.1-security",
     "enhanced-resolve": "^5.20.1",
     "next": "16.1.1",
+    "pdfkit": "^0.18.0",
     "react": "18.2.0",
     "react-dom": "18.2.0"
   },
@@ -46,6 +47,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
+    "@types/pdfkit": "^0.17.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
