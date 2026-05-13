@@ -14,6 +14,13 @@ export type InventoryItem = {
   status: string;
   mission: string;
   expiration: Date;
+  mission_inventory?: {
+    mission_id: number;
+    quantity_used: number | null;
+    missions?: {
+      mission_name: string | null;
+    };
+  }[] | null;
   internal_notes: string | null;
   market_value_per_unit: number;
   total_value: number;
@@ -27,6 +34,7 @@ export type InventoryItem = {
     uploaded_by: string;
     created_at: string;
   }[] | null;
+  active: boolean;
 };
 
 export interface ActivityEntry {
@@ -51,13 +59,14 @@ export interface Props {
   onClose: () => void;
   item: InventoryItem | null;
   setItems?: React.Dispatch<React.SetStateAction<InventoryItem[]>>;
+  onAssignToMission?: () => void;
 }
 
 export interface State {
   isEditing: boolean;
   selectedTab: "Overview" | "Activity" | "Documentation" | "Details";
   activity: ActivityRow[];
-  form: UpdateItemDetailsPayload;
+  form: ItemForm;
 }
 
 export type InventoryPayload = {
@@ -87,7 +96,18 @@ export type UpdateItemDetailsPayload = Partial<{
   typical_shelf_life: string;
   location: string;
   internal_notes: string;
+  active: boolean;
 }>;
+
+export type ItemForm = {
+  manufacturer: string;
+  reference_number: string;
+  lot_number: string;
+  unit_of_measure: string;
+  typical_shelf_life: string;
+  location: string;
+  internal_notes: string;
+};
 
 export type ActivityRow = {
   key: string;

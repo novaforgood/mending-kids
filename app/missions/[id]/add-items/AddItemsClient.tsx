@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { addMissionItem } from "../../actions";
 import { useAuthUser } from "@/app/hooks/authUser";
 
@@ -54,15 +54,27 @@ function formatDate(dateStr: string | null) {
 }
 
 export default function AddItemsClient({ missionId, inventory }: Props) {
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Initialize selected state with pre-selected item from URL
+  const [selected, setSelected] = useState<Record<number, number>>(() => {
+    const preSelectedItemId = searchParams.get("preSelectedItemId");
+    if (preSelectedItemId) {
+      const itemId = Number(preSelectedItemId);
+      if (!isNaN(itemId) && inventory.some((item) => item.id === itemId)) {
+        return { [itemId]: 1 };
+      }
+    }
+    return {};
+  });
+  
   const [step, setStep] = useState<1 | 2>(1);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Record<number, number>>({}); // id → qty
   const [saving, setSaving] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
-  const { user, loading } = useAuthUser();
+  const { user } = useAuthUser();
 
   const selectedCount = Object.keys(selected).length;
 
@@ -95,13 +107,6 @@ export default function AddItemsClient({ missionId, inventory }: Props) {
     setSelected((prev) => ({ ...prev, [id]: Math.max(1, qty) }));
   };
 
-  const incrementQty = (id: number) => {
-    setSelected((prev) => {
-      if (id in prev) return { ...prev, [id]: prev[id] + 1 };
-      return { ...prev, [id]: 1 };
-    });
-  };
-
   const handleSubmit = async () => {
     if (selectedCount === 0) return;
     setSaving(true);
@@ -124,8 +129,9 @@ export default function AddItemsClient({ missionId, inventory }: Props) {
       })
     )
   );
-} catch (err: any) {
-  setPopupMessage(err.message || "You do not have permission.");
+} catch (err: unknown) {
+  const error = err as Error;
+  setPopupMessage(error.message || "You do not have permission.");
   setShowPopup(true);
 }
   };

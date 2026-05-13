@@ -1,17 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import DynamicTable from "@atlaskit/dynamic-table";
-import Button from "@atlaskit/button/new/";
+import { useRouter } from "next/navigation";
+import CustomDynamicTable from "./components/custom-dynamic-table";
 import CustomButton from "./components/custom-button";
-import { IconButton } from "@atlaskit/button/new";
+import Button, { IconButton } from "@atlaskit/button/new";
+import CustomLozenge from "./components/custom-lozenge";
+import DropdownMenu, {
+  DropdownItem,
+  DropdownItemGroup,
+} from "@atlaskit/dropdown-menu";
+import CustomDatePicker from "./components/CustomDatePicker";
+import AddQuantityModal from "./components/AddQuantityModal";
 
 import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from "@atlaskit/icon/core/show-more-horizontal";
 import DownloadIcon from "@atlaskit/icon/core/arrow-down";
+import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
+import SearchIcon from "@atlaskit/icon/core/search";
 
-import { fetchInventory, addItem, updateItemDocumentation } from "./utils/actions";
+import { fetchInventory, addItem, updateItemDocumentation, updateItemDetails, deleteItem, addItemQuantity } from "./utils/actions";
+import { fetchMissions } from "@/app/missions/actions";
 import DocumentationModal from "./components/documentation-modal";
 import AddItemPanel from "./components/add-item-panel";
 
@@ -19,9 +29,9 @@ import { InventoryItem } from "./utils/types";
 import ViewEditPanel from "./ViewEditPanel";
 import { supabase } from "@/lib/supabase/supabaseClient";
 
-import { useAuthUser } from "../hooks/authUser";
 
 export default function InventoryPage() {
+  const router = useRouter();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string>("anonymous");
@@ -55,16 +65,32 @@ export default function InventoryPage() {
   }
 
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const [panelMode, setPanelMode] = useState<"view" | "edit">("view");
 
   const [selectedTab, setSelectedTab] = useState<"active" | "archived">("active");
 
-  const { user, loading } = useAuthUser();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedMission, setSelectedMission] = useState("");
+  const [selectedExpiration, setSelectedExpiration] = useState("");
+
+  const [isMissionsDropdownOpen, setIsMissionsDropdownOpen] = useState(false);
+  const [itemForAssignment, setItemForAssignment] = useState<InventoryItem | null>(null);
+  const [availableMissions, setAvailableMissions] = useState<Array<{ id: number; mission_name: string }>>([]);
+  const [addQuantityItem, setAddQuantityItem] = useState<InventoryItem | null>(null);
 
   useEffect(() => {
     loadInventory();
     getUser();
+    loadMissions();
   }, []);
+
+  async function loadMissions() {
+    try {
+      const missions = await fetchMissions();
+      setAvailableMissions(missions.map((m: { id: number; mission_name: string }) => ({ id: m.id, mission_name: m.mission_name })));
+    } catch {
+      setAvailableMissions([]);
+    }
+  }
 
   async function getUser() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -75,8 +101,8 @@ export default function InventoryPage() {
 
   async function loadInventory() {
     try {
-      const data = await fetchInventory();
-      const parsedData = data.map((item: any) => ({
+      const data = (await fetchInventory()) as InventoryItem[];
+      const parsedData = data.map((item) => ({
         ...item,
         expiration: item.expiration ? new Date(item.expiration) : new Date(),
       }));
@@ -118,7 +144,6 @@ export default function InventoryPage() {
       { key: "manufacturer", content: "Manufacturer", isSortable: true, width: 150 },
       { key: "reference_number", content: "Reference Number", isSortable: true, width: 150 },
       { key: "quantity", content: "Quantity", isSortable: true, width: 100 },
-      { key: "status", content: "Status", width: 120 },
       { key: "location", content: "Location", width: 120 },
       { key: "expiration", content: "Expiration", isSortable: true, width: 140 },
       { key: "actions", content: "Actions", width: 120 },
@@ -145,48 +170,186 @@ export default function InventoryPage() {
       : String(bVal).localeCompare(String(aVal));
   });
 
-  const activeItems = sortedItems.filter((item) => {
-    if (item.status === "archived") return false;
-    if (item.expiration && item.expiration < new Date()) return false;
-    return true;
+  const missionOptions = Array.from(
+    new Set(
+      items
+        .flatMap((i) =>
+          i.mission_inventory?.map((mi) => mi.missions?.mission_name).filter((m): m is string => Boolean(m)) ?? []
+        )
+        .filter(Boolean)
+    )
+  );
+
+  // Get available missions with their IDs
+  const availableMissionsWithIds = Array.from(
+    new Map(
+      items
+        .flatMap((i) =>
+          i.mission_inventory?.map((mi) => [
+            mi.mission_id,
+            mi.missions?.mission_name ?? "Unknown",
+          ]) ?? []
+        )
+        .entries()
+    )
+  ).map(([id, name]) => ({ id, name }));
+
+  const handleAssignToMission = () => {
+    if (selectedItem) {
+      setItemForAssignment(selectedItem);
+      setIsMissionsDropdownOpen(true);
+    }
+  };
+
+  const handleMissionSelect = (missionId: number) => {
+    if (itemForAssignment) {
+      router.push(`/missions/${missionId}/add-items?preSelectedItemId=${itemForAssignment.id}`);
+      setIsMissionsDropdownOpen(false);
+      setIsViewPanelOpen(false);
+    }
+  };
+
+  const filteredItems = sortedItems.filter((item) => {
+    const missionNames =
+      item.mission_inventory?.map((mi) => mi.missions?.mission_name).filter((m): m is string => Boolean(m)) ?? [];
+
+    const matchesSearch =
+      searchQuery.trim() === "" ||
+      item.item_description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.reference_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.manufacturer?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      missionNames.some((mission) =>
+        mission.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+    const matchesMission =
+      selectedMission === "" ||
+      missionNames.includes(selectedMission);
+
+    const expirationFilter =
+      selectedExpiration === ""
+        ? null
+        : new Date(`${selectedExpiration}T23:59:59.999`);
+
+    const matchesExpiration =
+      expirationFilter === null || item.expiration <= expirationFilter;
+
+    return matchesSearch && matchesMission && matchesExpiration;
   });
 
-  const archivedItems = sortedItems.filter((item) => {
-    if (item.status === "archived") return true;
-    if (item.expiration && item.expiration < new Date()) return true;
-    return false;
+  const activeItems = filteredItems.filter((item) => {
+    const usedQuantity = item.mission_inventory?.reduce(
+      (sum, mi) => sum + (mi.quantity_used ?? 0), 0
+    ) ?? 0;
+    const availableQuantity = item.quantity - usedQuantity;
+    return item.active && availableQuantity > 0;
+  });
+
+  const archivedItems = filteredItems.filter((item) => {
+    const usedQuantity = item.mission_inventory?.reduce(
+      (sum, mi) => sum + (mi.quantity_used ?? 0), 0
+    ) ?? 0;
+    const availableQuantity = item.quantity - usedQuantity;
+    return !item.active || availableQuantity < 1;
   });
 
   const createRows = (data: InventoryItem[]) =>
-    data.map((item) => ({
-      key: String(item.id),
-      cells: [
-        { content: <Cell>{item.item_description}</Cell> },
-        { content: <Cell>{item.manufacturer}</Cell> },
-        { content: <Cell>{item.reference_number}</Cell> },
-        { content: <Cell>{item.quantity}</Cell> },
-        { content: <Cell>{item.status}</Cell> },
-        { content: <Cell>{item.location}</Cell> },
-        { content: <Cell>{item.expiration.toLocaleDateString()}</Cell> },
-        {
-          content: (
-            <div style={{ display: "flex", gap: 8 }}>
-              <IconButton icon={AddIcon} label="Add" />
-              <IconButton
-                icon={EditIcon}
-                label="Edit"
-                onClick={() => {
-                  setSelectedItem(item);
-                  setPanelMode("view");
-                  setIsViewPanelOpen(true);
-                }}
-              />
-              <IconButton icon={MoreIcon} label="More" />
-            </div>
-          ),
-        },
-      ],
-    }));
+    data.map((item) => {
+      const usedQuantity =
+        item.mission_inventory?.reduce(
+          (sum, missionItem) => sum + (missionItem.quantity_used ?? 0),
+          0
+        ) ?? 0;
+
+      const availableQuantity = item.quantity - usedQuantity;
+
+      return {
+        key: String(item.id),
+        item,
+        cells: [
+          { content: <Cell>{item.item_description}</Cell> },
+
+          { content: <Cell>{item.manufacturer}</Cell> },
+
+          { content: <Cell>{item.reference_number}</Cell> },
+
+          {
+            content: (
+              <Cell>
+                <CustomLozenge>{availableQuantity}</CustomLozenge>
+              </Cell>
+            ),
+          },
+
+          { content: <Cell>{item.location}</Cell> },
+
+          {
+            content: (
+              <Cell>
+                {item.expiration.toLocaleDateString()}
+              </Cell>
+            ),
+          },
+
+          {
+            content: (
+              <div
+                style={{ display: "flex", gap: 8 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <IconButton
+                  icon={AddIcon}
+                  label="Add"
+                  onClick={() => setAddQuantityItem(item)}
+                />
+
+                <IconButton
+                  icon={EditIcon}
+                  label="Edit"
+                  onClick={() => {
+                    setSelectedItem(item);
+                    setIsViewPanelOpen(true);
+                  }}
+                />
+
+                <DropdownMenu
+                  trigger={({ triggerRef, ...triggerProps }) => (
+                    <IconButton
+                      {...triggerProps}
+                      ref={triggerRef}
+                      icon={MoreIcon}
+                      label="More"
+                    />
+                  )}
+                >
+                  <DropdownItemGroup>
+                    <DropdownItem
+                      onClick={async () => {
+                        await updateItemDetails(item.id, { active: !item.active }, userEmail);
+                        await loadInventory();
+                      }}
+                    >
+                      {item.active
+                        ? "Archive"
+                        : "Unarchive"}
+                    </DropdownItem>
+
+                    <DropdownItem
+                      onClick={async () => {
+                        await deleteItem(item.id, userEmail);
+                        console.log("Delete item");
+                      }}
+                    >
+                      Delete
+                    </DropdownItem>
+                  </DropdownItemGroup>
+                </DropdownMenu>
+              </div>
+            ),
+          },
+        ],
+      };
+    });
 
   return (
     <div style={{ padding: 32 }}>
@@ -216,9 +379,17 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", borderBottom: "1px solid #DFE1E6", gap: 16 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          marginBottom: 16,
+          borderBottom: "2px solid #DFE1E6",
+        }}
+      >
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 16 }}>
           {["active", "archived"].map((tab) => (
             <div
               key={tab}
@@ -228,7 +399,7 @@ export default function InventoryPage() {
                 cursor: "pointer",
                 fontWeight: 600,
                 fontSize: "16px",
-                borderBottom: selectedTab === tab ? "2px solid #5137A2" : "none",
+                borderBottom: selectedTab === tab ? "3px solid #5137A2" : "none",
                 color: selectedTab === tab ? "#5137A2" : "#172B4D",
                 textTransform: "capitalize",
               }}
@@ -237,12 +408,100 @@ export default function InventoryPage() {
             </div>
           ))}
         </div>
+
+        {/* Filters */}
+        <div className="flex items-center justify-center gap-2 -mt-3">
+          <div style={{ display: "flex" }}>
+            <DropdownMenu
+              trigger={({ triggerRef, ...triggerProps }) => (
+                <button
+                  {...triggerProps}
+                  ref={triggerRef}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    border: "1px solid #8C8F97",
+                    borderRadius: 6,
+                    padding: "6px 12px",
+                    width: 160,
+                    fontSize: 14,
+                    background: "white",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ color: "#505258", fontWeight: 500 }}>
+                    {selectedMission || "Mission"}
+                  </span>
+                  <ChevronDownIcon label="" />
+                </button>
+              )}
+            >
+              <DropdownItemGroup>
+                <DropdownItem onClick={() => setSelectedMission("")}>
+                  All Missions
+                </DropdownItem>
+
+                {missionOptions.map((mission) => (
+                  <DropdownItem
+                    key={mission}
+                    onClick={() => setSelectedMission(mission)}
+                  >
+                    {mission}
+                  </DropdownItem>
+                ))}
+              </DropdownItemGroup>
+            </DropdownMenu>
+          </div>
+
+          <div
+            style={{
+              marginBottom: 4,
+              marginTop: -2,
+            }}
+          >
+            <CustomDatePicker
+              value={selectedExpiration}
+              onChange={setSelectedExpiration}
+              placeholder="Expiration"
+            />
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              border: "1px solid #8C8F97",
+              borderRadius: 6,
+              padding: "0 10px",
+              width: 240,
+              background: "white",
+            }}
+          >
+            <SearchIcon label="Search" size="small" />
+
+            <input
+              type="text"
+              placeholder="Search inventory..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                border: "none",
+                outline: "none",
+                fontSize: 13,
+                padding: "6px 8px",
+                width: "100%",
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       {error && <div style={{ color: "#DE350B" }}>{error}</div>}
 
       <div style={{ overflowX: "auto" }}>
-        <DynamicTable
+        <CustomDynamicTable
           head={head}
           rows={createRows(selectedTab === "active" ? activeItems : archivedItems)}
           sortKey={sortKey ?? undefined}
@@ -256,19 +515,104 @@ export default function InventoryPage() {
           isFixedSize
           emptyView={
             <div style={{ padding: 16, textAlign: "center", color: "#6B778C" }}>
-              {selectedTab === "active" ? "No active items" : "No archived items"}
+              {selectedTab === "active"
+                ? "No active items"
+                : "No archived items"}
             </div>
           }
-        />
+
+          onRowClick={(item) => {
+            setSelectedItem(item);
+            setIsViewPanelOpen(true);
+          }}
+
+        />      
       </div>
 
       <ViewEditPanel
         isOpen={isViewPanelOpen}
         onClose={() => setIsViewPanelOpen(false)}
         item={selectedItem}
-        // mode={panelMode}
         setItems={setItems}
+        onAssignToMission={handleAssignToMission}
       />
+
+      {/* Missions Dropdown Overlay */}
+      {isMissionsDropdownOpen && availableMissionsWithIds.length > 0 && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0, 0, 0, 0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1200,
+          }}
+          onClick={() => setIsMissionsDropdownOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: 8,
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+              minWidth: 300,
+              maxWidth: 500,
+              maxHeight: 400,
+              overflow: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: 16,
+                borderBottom: "1px solid #DFE1E6",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              Select a Mission to Assign To
+            </div>
+            <div>
+              {availableMissionsWithIds.map((mission) => (
+                <div
+                  key={mission.id}
+                  onClick={() => handleMissionSelect(mission.id)}
+                  style={{
+                    padding: "12px 16px",
+                    cursor: "pointer",
+                    borderBottom: "1px solid #F1F2F4",
+                    transition: "background-color 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#F7F8F9";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }}
+                >
+                  {mission.name}
+                </div>
+              ))}
+              {availableMissionsWithIds.length === 0 && (
+                <div
+                  style={{
+                    padding: 16,
+                    textAlign: "center",
+                    color: "#6B778C",
+                    fontSize: 13,
+                  }}
+                >
+                  No active missions available
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <AddItemPanel
         isOpen={isPanelOpen}
@@ -293,6 +637,20 @@ export default function InventoryPage() {
           await loadInventory();
         }}
       />
+
+      {addQuantityItem && (
+        <AddQuantityModal
+          itemDescription={addQuantityItem.item_description}
+          onConfirm={async (qty, notes) => {
+            await addItemQuantity(addQuantityItem.id, qty, notes, userEmail);
+            await loadInventory();
+            setAddQuantityItem(null);
+          }}
+          onClose={() => setAddQuantityItem(null)}
+        />
+      )}
+
+
     </div>
   );
 }
