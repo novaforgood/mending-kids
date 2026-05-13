@@ -94,13 +94,7 @@ export default async function AuditReportPage({
       </section>
 
       <section className="space-y-2 rounded-lg border border-gray-200 bg-white p-4">
-        <h2 className="text-lg font-semibold text-black">3) Items Returned To Donor</h2>
-        <LineTable lines={report.returned.lines} />
-        <p className="text-sm font-semibold text-black">Total returned value: {money(report.returned.totalValue)}</p>
-      </section>
-
-      <section className="space-y-2 rounded-lg border border-gray-200 bg-white p-4">
-        <h2 className="text-lg font-semibold text-black">4) Items Currently In Inventory</h2>
+        <h2 className="text-lg font-semibold text-black">3) Items Currently In Inventory</h2>
         <LineTable lines={report.currentInventory.lines} />
         <p className="text-sm font-semibold text-black">
           Current inventory total value: {money(report.currentInventory.totalValue)}
