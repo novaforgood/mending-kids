@@ -135,7 +135,7 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
     this.setState({ isAddQuantityOpen: false });
   }
 
-  renderExpirationLozenge(date?: Date) {
+  renderExpirationLozenge(date?: Date | null) {
     if (!date) return null;
     const expText = `EXP ${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
     return <CustomLozenge appearance="exp">{expText}</CustomLozenge>;
@@ -402,7 +402,7 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
             <div style={{ borderTop: "1px solid #DFE1E6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
                 <CustomLozenge appearance="stat">{item.status}</CustomLozenge>
-                {this.renderExpirationLozenge(item.expiration)}
+                {this.renderExpirationLozenge(item.expiration) ?? null}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
                 <CustomLozenge appearance="unit_stat">
@@ -446,8 +446,8 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
             title={item.item_description}
             breadcrumbs={
               <Breadcrumbs>
-                <BreadcrumbsItem text={item.reference_number ?? ""} />
-                <BreadcrumbsItem text={item.location ?? ""} />
+                <BreadcrumbsItem text={item.reference_number ?? "-"} />
+                <BreadcrumbsItem text={item.location ?? "-"} />
               </Breadcrumbs>
             }
           />

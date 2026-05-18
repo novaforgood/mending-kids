@@ -125,7 +125,7 @@ export default function AddItemPanel({
         lot_number: lotNumber,
         unit_of_measure: unitOfMeasure,
         typical_shelf_life: typicalShelfLife,
-        expiration: new Date(expirationDate) || NULL,
+        expiration: new Date(expirationDate) || null,
         location,
         market_value_per_unit: parseFloat(marketValue) || 0,
         valuation_source: valuationSource,
@@ -190,11 +190,8 @@ export default function AddItemPanel({
                 ← Back
               </CustomButton>
             )}
-            <CustomButton
-              isLoading={isSaving}
-              onClick={handleNext}
-            >
-              {step === 2 ? "Submit" : "Next →"}
+            <CustomButton onClick={handleNext}>
+              {isSaving ? "Loading..." : step === 2 ? "Submit" : "Next →"}
             </CustomButton>
           </div>              
         </>

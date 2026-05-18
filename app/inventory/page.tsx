@@ -250,8 +250,10 @@ export default function InventoryPage() {
         : parseExpirationString(selectedExpiration);
 
     const matchesExpiration =
-      expirationFilter === null || item.expiration <= expirationFilter;
-
+      expirationFilter === null ||
+      item.expiration === null ||
+      item.expiration <= expirationFilter;
+      
     return matchesSearch && matchesMission && matchesExpiration;
   });
 
