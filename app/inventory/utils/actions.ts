@@ -83,6 +83,7 @@ export async function addItem(payload: InventoryPayload, userEmail: string) {
     .from("inventory")
     .insert({
       ...payload,
+      created_by: userEmail,
       total_value: money2(payload.quantity * payload.market_value_per_unit),
       status: getInventoryStatus(payload.quantity, payload.expiration),
     })
@@ -223,7 +224,7 @@ export async function updateItemQuantity(
   );
 }
 
-/* Update item details (FIXED VERSION) */
+/* Update item details */
 export async function updateItemDetails(
   id: number,
   payload: UpdateItemDetailsPayload,

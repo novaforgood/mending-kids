@@ -27,14 +27,14 @@ import AddItemPanel from "./components/add-item-panel";
 
 import { InventoryItem } from "./utils/types";
 import ViewEditPanel from "./ViewEditPanel";
-import { supabase } from "@/lib/supabase/supabaseClient";
+import { supabaseBrowser as supabase } from "@/lib/supabase/client";
 
 
 export default function InventoryPage() {
   const router = useRouter();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string>("anonymous");
+  const [userEmail, setUserEmail] = useState<string>("");
 
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -95,9 +95,11 @@ export default function InventoryPage() {
   async function handlePanelSave(payload: Parameters<typeof addItem>[0]) {
     setIsSaving(true);
     setError(null);
+
     try {
       await addItem(payload, userEmail);
       await loadInventory();
+
       setIsPanelOpen(false);
     } catch {
       setError("Failed to add item");
@@ -105,7 +107,6 @@ export default function InventoryPage() {
       setIsSaving(false);
     }
   }
-
   const Cell = ({ children }: { children: React.ReactNode }) => (
     <div
       style={{
