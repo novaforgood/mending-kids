@@ -62,6 +62,21 @@ function money2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function getInventoryStatus(quantity: number, expiration: Date | string | null | undefined): string {
+  const now = new Date();
+  const expirationDate = expiration ? new Date(expiration) : null;
+
+  if (expirationDate && !Number.isNaN(expirationDate.getTime()) && expirationDate < now) {
+    return "Expired";
+  }
+
+  if (quantity < 50) {
+    return "Low Stock";
+  }
+
+  return "In Stock";
+}
+
 /* Add a new inventory item */
 export async function addItem(payload: InventoryPayload, userEmail: string) {
   const { data, error } = await supabaseServer
@@ -69,6 +84,7 @@ export async function addItem(payload: InventoryPayload, userEmail: string) {
     .insert({
       ...payload,
       total_value: money2(payload.quantity * payload.market_value_per_unit),
+      status: getInventoryStatus(payload.quantity, payload.expiration),
     })
     .select()
     .single();
@@ -165,18 +181,18 @@ export async function updateItemQuantity(
 ) {
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
-    .select("quantity, item_description, active, market_value_per_unit")
+    .select("quantity, item_description, active, market_value_per_unit, expiration")
     .eq("id", id)
     .single();
 
   if (fetchError) throw new Error(fetchError.message);
 
-  const updates: Record<string, any> = {
+  const updates = {
     quantity: newQuantity,
-    total_value: newQuantity * oldItem.market_value_per_unit,
+    total_value: money2(newQuantity * oldItem.market_value_per_unit),
+    active: newQuantity > 0,
+    status: getInventoryStatus(newQuantity, oldItem.expiration),
   };
-
-  updates.active = newQuantity > 0;
 
   const { error } = await supabaseServer
     .from("inventory")
@@ -224,7 +240,7 @@ export async function updateItemDetails(
   if (fetchError) throw new Error(fetchError.message);
 
   const cleanPayload = Object.fromEntries(
-    Object.entries(payload).filter(([_, v]) => v !== undefined)
+    Object.entries(payload).filter(([, v]) => v !== undefined)
   );
 
   const { error } = await supabaseServer
@@ -311,7 +327,7 @@ export async function addItemQuantity(
   // Fetch current item state
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
-    .select("quantity, item_description, market_value_per_unit, status")
+    .select("quantity, item_description, market_value_per_unit, active, expiration")
     .eq("id", id)
     .single();
 
@@ -326,8 +342,8 @@ export async function addItemQuantity(
     .update({
       quantity: newQuantity,
       total_value: newTotalValue,
-      // Re-activate if it was archived/depleted
-      ...(oldItem.status === "archived" ? { status: "active" } : {}),
+      active: newQuantity > 0,
+      status: getInventoryStatus(newQuantity, oldItem.expiration),
     })
     .eq("id", id);
 
@@ -341,7 +357,7 @@ export async function addItemQuantity(
       quantity_added: quantityToAdd,
       notes: notes || null,
       added_by: userEmail,
-      date_added: new Date().toISOString().split("T")[0], // YYYY-MM-DD
+      date_added: new Date().toISOString().split("T")[0],
     });
 
   if (entryError) throw new Error(entryError.message);

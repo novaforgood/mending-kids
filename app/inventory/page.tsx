@@ -17,6 +17,7 @@ import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from "@atlaskit/icon/core/show-more-horizontal";
 import ChevronDownIcon from '@atlaskit/icon/core/chevron-down';
+import FilterIcon from '@atlaskit/icon/core/filter';
 import SearchIcon from '@atlaskit/icon/core/search';
 
 import { fetchInventory, addItem, updateItemDocumentation, updateItemDetails, deleteItem, addItemQuantity } from "./utils/actions";
@@ -39,7 +40,7 @@ export default function InventoryPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("ASC");
+  const [sortOrder, setSortOrder] = useState<"ASC" | "DESC" | null>(null);
 
   const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -116,20 +117,54 @@ export default function InventoryPage() {
     </div>
   );
 
+  const renderHeaderContent = (
+    label: string,
+    isSortable = false
+  ) => {
+    const showDefaultSortIcon = isSortable && !sortKey && !sortOrder;
+
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <span>{label}</span>
+        {showDefaultSortIcon ? (
+          <FilterIcon label="Default sort" size="small" />
+        ) : null}
+      </div>
+    );
+  };
+
   const head = {
     cells: [
-      { key: "item_description", content: "Item Description", isSortable: true, width: 200 },
-      { key: "manufacturer", content: "Manufacturer", isSortable: true, width: 150 },
-      { key: "reference_number", content: "Reference Number", isSortable: true, width: 150 },
-      { key: "quantity", content: "Quantity", isSortable: true, width: 100 },
-      { key: "location", content: "Location", width: 120 },
-      { key: "expiration", content: "Expiration", isSortable: true, width: 140 },
-      { key: "actions", content: "Actions", width: 120 },
+      { key: "item_description", content: renderHeaderContent("Item Description", true), isSortable: true, width: 200 },
+      { key: "manufacturer", content: renderHeaderContent("Manufacturer", true), isSortable: true, width: 150 },
+      { key: "reference_number", content: renderHeaderContent("Reference Number", true), isSortable: true, width: 150 },
+      { key: "quantity", content: renderHeaderContent("Quantity", true), isSortable: true, width: 100 },
+      { key: "location", content: renderHeaderContent("Location", false), width: 120 },
+      { key: "expiration", content: renderHeaderContent("Expiration", true), isSortable: true, width: 140 },
+      { key: "actions", content: renderHeaderContent("Actions", false), width: 120 },
     ],
   };
 
+  const parseExpirationString = (value: string): Date | null => {
+    if (!value) return null;
+
+    const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      return new Date(`${value}T23:59:59.999`);
+    }
+
+    const usMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (usMatch) {
+      const [, month, day, year] = usMatch;
+      return new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T23:59:59.999`);
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   const sortedItems = [...items].sort((a, b) => {
-    if (!sortKey) return 0;
+    if (!sortKey || !sortOrder) return 0;
     const aVal = a[sortKey as keyof InventoryItem];
     const bVal = b[sortKey as keyof InventoryItem];
 
@@ -143,9 +178,12 @@ export default function InventoryPage() {
         : bVal.getTime() - aVal.getTime();
     }
 
+    const aString = aVal == null ? "" : String(aVal);
+    const bString = bVal == null ? "" : String(bVal);
+
     return sortOrder === "ASC"
-      ? String(aVal).localeCompare(String(aVal))
-      : String(bVal).localeCompare(String(aVal));
+      ? aString.localeCompare(bString)
+      : bString.localeCompare(aString);
   });
 
   const missionOptions = Array.from(
@@ -207,7 +245,7 @@ export default function InventoryPage() {
     const expirationFilter =
       selectedExpiration === ""
         ? null
-        : new Date(`${selectedExpiration}T23:59:59.999`);
+        : parseExpirationString(selectedExpiration);
 
     const matchesExpiration =
       expirationFilter === null || item.expiration <= expirationFilter;
@@ -427,7 +465,6 @@ export default function InventoryPage() {
               placeholder="Expiration"
             />
           </div>
-
           <div
             style={{
               display: "flex",
@@ -465,10 +502,27 @@ export default function InventoryPage() {
           head={head}
           rows={createRows(selectedTab === "active" ? activeItems : archivedItems)}
           sortKey={sortKey ?? undefined}
-          sortOrder={sortOrder}
-          onSort={({ key, sortOrder }) => {
+          sortOrder={sortOrder ?? undefined}
+          onSort={({ key }) => {
+            if (sortKey !== key) {
+              setSortKey(key);
+              setSortOrder("ASC");
+              return;
+            }
+
+            if (sortOrder === "ASC") {
+              setSortOrder("DESC");
+              return;
+            }
+
+            if (sortOrder === "DESC") {
+              setSortKey(null);
+              setSortOrder(null);
+              return;
+            }
+
             setSortKey(key);
-            setSortOrder(sortOrder);
+            setSortOrder("ASC");
           }}
           rowsPerPage={10}
           defaultPage={1}

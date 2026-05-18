@@ -17,8 +17,6 @@ type RowCell = {
 type Row<T = any> = {
   key: string;
   cells: RowCell[];
-
-  /* original item */
   item: T;
 };
 
@@ -30,11 +28,11 @@ type Props<T = any> = {
   rows: Row<T>[];
 
   sortKey?: string;
-  sortOrder?: "ASC" | "DESC";
+  sortOrder?: "ASC" | "DESC" | undefined;
 
   onSort?: (args: {
     key: string;
-    sortOrder: "ASC" | "DESC";
+    sortOrder?: "ASC" | "DESC";
   }) => void;
 
   rowsPerPage?: number;
@@ -139,17 +137,41 @@ export default function CustomDynamicTable<T>({
 
   return (
     <div className="custom-dynamic-table-wrapper">
-      <style jsx global>{`
-        .custom-dynamic-table-wrapper table {
-          border-collapse: collapse;
-          width: 100%;
-        }
+    <style jsx global>{`
+    .custom-dynamic-table-wrapper table {
+        border-collapse: collapse;
+        width: 100%;
+    }
 
-        .custom-dynamic-table-wrapper tbody tr:hover {
-          background: ${hoverRowColor} !important;
-        }
-      `}</style>
+    .custom-dynamic-table-wrapper tbody tr:hover {
+        background: ${hoverRowColor} !important;
+    }
 
+    /* Pagination buttons */
+    .custom-dynamic-table-wrapper nav button {
+        color: #422670 !important;
+        border-radius: 6px !important;
+    }
+
+    /* Hover state */
+    .custom-dynamic-table-wrapper nav button:hover {
+        background: #F0EBFF !important;
+    }
+
+    /* Selected page button */
+    .custom-dynamic-table-wrapper nav button[aria-current="page"] {
+        background: #EAE6FF !important;
+        color: #422670 !important;
+        // border: 2px solid #422670 !important;
+
+    }
+
+    /* Selected page text */
+    .custom-dynamic-table-wrapper nav button[aria-current="page"] * {
+        color: #422670 !important;
+    }
+    `}</style>
+    
       <DynamicTable
         head={styledHead}
         rows={styledRows}
