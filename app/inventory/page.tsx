@@ -44,6 +44,7 @@ export default function InventoryPage() {
 
   const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [selectionClearSignal, setSelectionClearSignal] = useState(0);
 
   const [selectedTab, setSelectedTab] = useState<"active" | "archived">("active");
 
@@ -539,13 +540,18 @@ export default function InventoryPage() {
             setSelectedItem(item);
             setIsViewPanelOpen(true);
           }}
+          clearSelectionTrigger={selectionClearSignal}
 
         />      
       </div>
 
       <ViewEditPanel
         isOpen={isViewPanelOpen}
-        onClose={() => setIsViewPanelOpen(false)}
+        onClose={() => {
+          setIsViewPanelOpen(false);
+          setSelectedItem(null);
+          setSelectionClearSignal((s) => s + 1);
+        }}
         item={selectedItem}
         setItems={setItems}
         onAssignToMission={handleAssignToMission}

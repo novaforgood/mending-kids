@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DynamicTable from "@atlaskit/dynamic-table";
 
 type HeadCell = {
@@ -14,13 +14,13 @@ type RowCell = {
   content: React.ReactNode;
 };
 
-type Row<T = any> = {
+type Row<T = unknown> = {
   key: string;
   cells: RowCell[];
   item: T;
 };
 
-type Props<T = any> = {
+type Props<T = unknown> = {
   head: {
     cells: HeadCell[];
   };
@@ -50,6 +50,7 @@ type Props<T = any> = {
 
   /* CLICK */
   onRowClick?: (item: T) => void;
+  clearSelectionTrigger?: number;
 };
 
 export default function CustomDynamicTable<T>({
@@ -77,8 +78,16 @@ export default function CustomDynamicTable<T>({
   textColor = "#172B4D",
 
   onRowClick,
+  clearSelectionTrigger,
 }: Props<T>) {
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (clearSelectionTrigger !== undefined) {
+      // defer clearing selection to avoid synchronous setState inside effect
+      setTimeout(() => setSelectedRowKey(null), 0);
+    }
+  }, [clearSelectionTrigger]);
 
   const styledHead = {
     cells: head.cells.map((cell) => ({
