@@ -84,7 +84,7 @@ export default function InventoryPage() {
       const data = (await fetchInventory()) as InventoryItem[];
       const parsedData = data.map((item) => ({
         ...item,
-        expiration: item.expiration ? new Date(item.expiration) : new Date(),
+        expiration: item.expiration ? new Date(item.expiration) : null,
       }));
       setItems(parsedData);
     } catch {
@@ -304,7 +304,7 @@ export default function InventoryPage() {
           {
             content: (
               <Cell>
-                {item.expiration.toLocaleDateString()}
+                {item.expiration ? item.expiration.toLocaleDateString() : "—"}
               </Cell>
             ),
           },

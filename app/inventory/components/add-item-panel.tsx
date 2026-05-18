@@ -124,7 +124,7 @@ export default function AddItemPanel({
         lot_number: lotNumber,
         unit_of_measure: unitOfMeasure,
         typical_shelf_life: typicalShelfLife,
-        expiration: new Date(expirationDate),
+        expiration: new Date(expirationDate) || NULL,
         location,
         market_value_per_unit: parseFloat(marketValue) || 0,
         valuation_source: valuationSource,
