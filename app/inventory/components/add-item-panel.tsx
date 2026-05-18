@@ -8,6 +8,7 @@ import LinkIcon from "@atlaskit/icon/core/link";
 import type { InventoryPayload } from "../utils/types";
 import ValuationSuggestedSources from "./ValuationSuggestedSources";
 import { SidePanel } from "./SidePanel";
+import CustomButton from "./custom-button";
 
 type AddItemPanelProps = {
   isOpen: boolean;
@@ -173,17 +174,29 @@ export default function AddItemPanel({
       subtitle={<span style={{ color: "#6B778C" }}><span style={{ color: "#DE350B" }}>*</span> indicates a required field</span>}
       footer={
         <>
-          <Button appearance="subtle" onClick={onClose}>Cancel</Button>
+          <CustomButton 
+            backgroundColor="#EBECF0" 
+            hoverColor="#DFE1E6"
+            textColor="#172B4D" 
+            onClick={onClose}
+          >
+            Cancel
+          </CustomButton>
           <div style={{ display: "flex", gap: 8 }}>
             {step === 2 && (
-              <Button appearance="subtle" onClick={() => setStep(1)}>
+              <CustomButton
+                onClick={() => setStep(1)}
+              >
                 ← Back
-              </Button>
+              </CustomButton>
             )}
-            <Button appearance="primary" isLoading={isSaving} onClick={handleNext}>
+            <CustomButton
+              isLoading={isSaving}
+              onClick={handleNext}
+            >
               {step === 2 ? "Submit" : "Next →"}
-            </Button>
-          </div>
+            </CustomButton>
+          </div>              
         </>
       }
     >
