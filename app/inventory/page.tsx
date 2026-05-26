@@ -141,7 +141,7 @@ export default function InventoryPage() {
       { key: "manufacturer", content: renderHeaderContent("Manufacturer", true), isSortable: true, width: 150 },
       { key: "reference_number", content: renderHeaderContent("Reference Number", true), isSortable: true, width: 150 },
       { key: "quantity", content: renderHeaderContent("Quantity", true), isSortable: true, width: 100 },
-      { key: "location", content: renderHeaderContent("Location", false), width: 120 },
+      { key: "location", content: renderHeaderContent("Location", true), isSortable: true, width: 120 },
       { key: "expiration", content: renderHeaderContent("Expiration", true), isSortable: true, width: 140 },
       { key: "actions", content: renderHeaderContent("Actions", false), width: 120 },
     ],
@@ -253,7 +253,7 @@ export default function InventoryPage() {
       expirationFilter === null ||
       item.expiration === null ||
       item.expiration <= expirationFilter;
-      
+
     return matchesSearch && matchesMission && matchesExpiration;
   });
 
