@@ -11,6 +11,7 @@ export type InventoryItem = {
   typical_shelf_life: string | null;
   location: string | null;
   quantity: number;
+  initial_quantity?: number | null;
   status: string;
   mission: string;
   expiration: Date;
@@ -52,7 +53,14 @@ export interface DocumentEntry {
   type: string;
   uploaded_by: string;
   created_at: string;
+  url?: string;
 }
+
+export type DocumentUploadPayload = {
+  name: string;
+  mimeType: string;
+  base64: string;
+};
 
 export interface Props {
   isOpen: boolean;
@@ -60,6 +68,7 @@ export interface Props {
   item: InventoryItem | null;
   setItems?: React.Dispatch<React.SetStateAction<InventoryItem[]>>;
   onAssignToMission?: () => void;
+  onAddDocumentation?: () => void;
 }
 
 export interface State {
@@ -84,6 +93,7 @@ export type InventoryPayload = {
   market_value_per_unit: number;
   valuation_source: string;
   acquisition_method: string;
+  document?: DocumentUploadPayload;
 };
 
 export type ChangeType = "added" | "edited" | "deleted" | "archived";

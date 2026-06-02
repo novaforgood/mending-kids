@@ -1,6 +1,7 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabase/server";
+import { ACQUISITION_METHODS } from "./constants";
 
 type InventoryRow = {
   id: number;
@@ -8,6 +9,7 @@ type InventoryRow = {
   item_description: string | null;
   reference_number: string | null;
   quantity: number | null;
+  initial_quantity: number | null;
   market_value_per_unit: number | null;
   status: string | null;
   acquisition_method: string | null;
@@ -33,7 +35,7 @@ function pickOne<T>(v: T | T[] | null | undefined): T | null {
 
 export type AuditLine = {
   label: string;
-  quantity: number;
+  initQuantity: number;
   unitValue: number;
   totalValue: number;
 };
@@ -44,13 +46,18 @@ export type MissionUsageSummary = {
   totalValue: number;
 };
 
+export type AcquisitionSection = {
+  method: string;
+  label: string;
+  lines: AuditLine[];
+  totalValue: number;
+};
+
 export type AuditReportData = {
   year: number;
-  donated: { lines: AuditLine[]; totalValue: number };
+  receivedByAcquisition: AcquisitionSection[];
   usedByMission: { missions: MissionUsageSummary[]; totalValue: number };
-  returned: { lines: AuditLine[]; totalValue: number };
   currentInventory: { lines: AuditLine[]; totalValue: number };
-  notes: string[];
 };
 
 function money2(n: number): number {
@@ -63,38 +70,83 @@ function inYear(iso: string | null, year: number): boolean {
   return d.getFullYear() === year;
 }
 
+function initQty(row: InventoryRow): number {
+  const initial = row.initial_quantity;
+  if (initial != null && Number.isFinite(Number(initial))) {
+    return Number(initial);
+  }
+  return Number(row.quantity ?? 0);
+}
+
 function lineFromInventory(row: InventoryRow): AuditLine {
-  const quantity = Number(row.quantity ?? 0);
+  const initQuantity = initQty(row);
   const unitValue = Number(row.market_value_per_unit ?? 0);
   return {
     label: row.item_description || row.reference_number || `Inventory #${row.id}`,
-    quantity,
+    initQuantity,
     unitValue,
-    totalValue: money2(quantity * unitValue),
+    totalValue: money2(initQuantity * unitValue),
   };
 }
 
+function normalizeMethod(raw: string | null): string {
+  const m = (raw ?? "").trim().toLowerCase();
+  if (ACQUISITION_METHODS.some((a) => a.key === m)) return m;
+  return m || "unspecified";
+}
+
+const INVENTORY_SELECT_WITH_INIT =
+  "id, created_at, item_description, reference_number, quantity, initial_quantity, market_value_per_unit, status, acquisition_method";
+const INVENTORY_SELECT_WITHOUT_INIT =
+  "id, created_at, item_description, reference_number, quantity, market_value_per_unit, status, acquisition_method";
+
 export async function fetchAuditReport(year: number): Promise<AuditReportData> {
-  const { data: inventory, error: inventoryError } = await supabaseServer
+  let { data: inventory, error: inventoryError } = await supabaseServer
     .from("inventory")
-    .select("id, created_at, item_description, reference_number, quantity, market_value_per_unit, status, acquisition_method");
+    .select(INVENTORY_SELECT_WITH_INIT);
+
+  if (inventoryError?.message?.includes("initial_quantity")) {
+    ({ data: inventory, error: inventoryError } = await supabaseServer
+      .from("inventory")
+      .select(INVENTORY_SELECT_WITHOUT_INIT));
+  }
   if (inventoryError) throw new Error(inventoryError.message);
+
+  const invRows = ((inventory ?? []) as Record<string, unknown>[]).map((row) => ({
+    ...(row as InventoryRow),
+    initial_quantity: (row.initial_quantity as number | null | undefined) ?? null,
+  }));
 
   const { data: missionUsage, error: missionError } = await supabaseServer
     .from("mission_inventory")
     .select("quantity_used, missions:mission_id(mission_name,start_date), inventory:inventory_id(item_description,market_value_per_unit)");
   if (missionError) throw new Error(missionError.message);
 
-  const invRows = (inventory ?? []) as unknown as InventoryRow[];
   const usageRows = (missionUsage ?? []) as unknown as MissionUsageRow[];
 
-  const donatedLines = invRows
-    .filter((r) => (r.acquisition_method ?? "").toLowerCase() === "donation" && inYear(r.created_at, year))
-    .map(lineFromInventory);
+  const receivedInYear = invRows.filter((r) => inYear(r.created_at, year));
 
-  const returnedLines = invRows
-    .filter((r) => (r.status ?? "").toLowerCase().includes("return"))
-    .map(lineFromInventory);
+  const receivedByAcquisition: AcquisitionSection[] = ACQUISITION_METHODS.map(({ key, label }) => {
+    const lines = receivedInYear
+      .filter((r) => normalizeMethod(r.acquisition_method) === key)
+      .map(lineFromInventory)
+      .sort((a, b) => a.label.localeCompare(b.label));
+    const totalValue = money2(lines.reduce((s, l) => s + l.totalValue, 0));
+    return { method: key, label, lines, totalValue };
+  });
+
+  const unspecifiedLines = receivedInYear
+    .filter((r) => !ACQUISITION_METHODS.some((a) => a.key === normalizeMethod(r.acquisition_method)))
+    .map(lineFromInventory)
+    .sort((a, b) => a.label.localeCompare(b.label));
+  if (unspecifiedLines.length > 0) {
+    receivedByAcquisition.push({
+      method: "unspecified",
+      label: "Unspecified",
+      lines: unspecifiedLines,
+      totalValue: money2(unspecifiedLines.reduce((s, l) => s + l.totalValue, 0)),
+    });
+  }
 
   const currentInventoryLines = invRows
     .filter((r) => Number(r.quantity ?? 0) > 0)
@@ -110,7 +162,7 @@ export async function fetchAuditReport(year: number): Promise<AuditReportData> {
     const unitValue = Number(inv?.market_value_per_unit ?? 0);
     const line: AuditLine = {
       label: inv?.item_description || "Unknown item",
-      quantity: qty,
+      initQuantity: qty,
       unitValue,
       totalValue: money2(qty * unitValue),
     };
@@ -125,22 +177,13 @@ export async function fetchAuditReport(year: number): Promise<AuditReportData> {
   }
 
   const missions = [...byMission.values()].sort((a, b) => a.missionName.localeCompare(b.missionName));
-
   const sum = (lines: AuditLine[]) => money2(lines.reduce((s, l) => s + l.totalValue, 0));
   const usedGrandTotal = money2(missions.reduce((s, m) => s + m.totalValue, 0));
 
   return {
     year,
-    donated: { lines: donatedLines, totalValue: sum(donatedLines) },
+    receivedByAcquisition,
     usedByMission: { missions, totalValue: usedGrandTotal },
-    returned: { lines: returnedLines, totalValue: sum(returnedLines) },
     currentInventory: { lines: currentInventoryLines, totalValue: sum(currentInventoryLines) },
-    notes: [
-      "Donated items are identified by acquisition_method = donation and created_at in this year.",
-      "Returned items are identified by status containing 'return'.",
-      "Mission used totals use mission_inventory.quantity_used x current inventory.market_value_per_unit.",
-      "Donor-specific filtering (e.g. Sunny only) requires a donor field in your schema.",
-    ],
   };
 }
-

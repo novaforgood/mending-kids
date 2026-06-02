@@ -1,7 +1,13 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabase/server";
-import { InventoryPayload, ChangeType, UpdateItemDetailsPayload } from "./types";
+import {
+  InventoryPayload,
+  ChangeType,
+  UpdateItemDetailsPayload,
+  DocumentUploadPayload,
+} from "./types";
+import { appendInventoryDocument } from "./documents";
 
 async function logInventoryChange(
   type: ChangeType,
@@ -64,16 +70,44 @@ function money2(n: number): number {
 
 /* Add a new inventory item */
 export async function addItem(payload: InventoryPayload, userEmail: string) {
-  const { data, error } = await supabaseServer
+  const { document, ...inventoryFields } = payload;
+
+  const insertRow = {
+    ...inventoryFields,
+    initial_quantity: payload.quantity,
+    total_value: money2(payload.quantity * payload.market_value_per_unit),
+  };
+
+  let { data, error } = await supabaseServer
     .from("inventory")
-    .insert({
-      ...payload,
-      total_value: money2(payload.quantity * payload.market_value_per_unit),
-    })
+    .insert(insertRow)
     .select()
     .single();
 
+  if (error?.message?.includes("initial_quantity")) {
+    const { initial_quantity: _ignored, ...withoutInit } = insertRow;
+    ({ data, error } = await supabaseServer
+      .from("inventory")
+      .insert(withoutInit)
+      .select()
+      .single());
+  }
+
   if (error) throw new Error(error.message);
+  if (!data) throw new Error("Failed to create inventory item");
+
+  const { error: entryError } = await supabaseServer.from("inventory_entries").insert({
+    inventory_id: data.id,
+    quantity_added: payload.quantity,
+    notes: "Initial receipt",
+    added_by: userEmail,
+    date_added: new Date().toISOString().split("T")[0],
+  });
+  if (entryError) throw new Error(entryError.message);
+
+  if (document) {
+    await appendInventoryDocument(data.id, document, userEmail);
+  }
 
   await logInventoryChange(
     "added",
@@ -81,6 +115,8 @@ export async function addItem(payload: InventoryPayload, userEmail: string) {
     data.id,
     payload.item_description
   );
+
+  return data.id as number;
 }
 
 /* Update documentation fields on an existing item */
@@ -89,7 +125,8 @@ export async function updateItemDocumentation(
   marketValuePerUnit: number,
   valuationSource: string,
   acquisitionMethod: string,
-  userEmail: string
+  userEmail: string,
+  document?: DocumentUploadPayload
 ) {
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
@@ -114,6 +151,10 @@ export async function updateItemDocumentation(
     .eq("id", id);
 
   if (error) throw new Error(error.message);
+
+  if (document) {
+    await appendInventoryDocument(id, document, userEmail);
+  }
 
   await logInventoryChange(
     "edited",

@@ -1,4 +1,4 @@
-import { fetchAuditReport, type AuditLine } from "./actions";
+import { fetchAuditReport, type AuditLine, type AcquisitionSection } from "./actions";
 
 function money(v: number): string {
   return `$${v.toFixed(2)}`;
@@ -15,7 +15,7 @@ function LineTable({ lines }: { lines: AuditLine[] }) {
         <thead className="bg-gray-50 text-left text-black">
           <tr>
             <th className="px-3 py-2 font-semibold">Item</th>
-            <th className="px-3 py-2 font-semibold">Qty</th>
+            <th className="px-3 py-2 font-semibold">Init Qty</th>
             <th className="px-3 py-2 font-semibold">Unit Value</th>
             <th className="px-3 py-2 font-semibold">Total</th>
           </tr>
@@ -24,13 +24,25 @@ function LineTable({ lines }: { lines: AuditLine[] }) {
           {lines.map((line, idx) => (
             <tr key={`${line.label}-${idx}`} className="border-t border-gray-100">
               <td className="px-3 py-2 text-black">{line.label}</td>
-              <td className="px-3 py-2 text-black">{line.quantity}</td>
+              <td className="px-3 py-2 text-black">{line.initQuantity}</td>
               <td className="px-3 py-2 text-black">{money(line.unitValue)}</td>
               <td className="px-3 py-2 text-black">{money(line.totalValue)}</td>
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function AcquisitionSectionBlock({ section }: { section: AcquisitionSection }) {
+  return (
+    <div className="space-y-2 rounded border border-gray-100 p-3">
+      <h3 className="font-medium text-black">{section.label}</h3>
+      <LineTable lines={section.lines} />
+      <p className="text-sm font-semibold text-black">
+        {section.label} total: {money(section.totalValue)}
+      </p>
     </div>
   );
 }
@@ -45,6 +57,8 @@ export default async function AuditReportPage({
   const year = Number(sp.year ?? nowYear);
   const safeYear = Number.isFinite(year) && year > 2000 && year < 3000 ? year : nowYear;
   const report = await fetchAuditReport(safeYear);
+
+  const receivedGrandTotal = report.receivedByAcquisition.reduce((s, sec) => s + sec.totalValue, 0);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 text-black">
@@ -67,10 +81,24 @@ export default async function AuditReportPage({
         </form>
       </div>
 
-      <section className="space-y-2 rounded-lg border border-gray-200 bg-white p-4">
-        <h2 className="text-lg font-semibold text-black">1) Items Donated ({report.year})</h2>
-        <LineTable lines={report.donated.lines} />
-        <p className="text-sm font-semibold text-black">Total donated value: {money(report.donated.totalValue)}</p>
+      <section className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+        <h2 className="text-lg font-semibold text-black">
+          1) Items Received by Acquisition Method ({report.year})
+        </h2>
+        <p className="text-sm text-gray-700">
+          Items first received this year, grouped by how they were acquired. Init Qty is the quantity at
+          first receipt.
+        </p>
+        {report.receivedByAcquisition.every((s) => s.lines.length === 0) ? (
+          <p className="text-sm text-black">No items received this year.</p>
+        ) : (
+          report.receivedByAcquisition
+            .filter((s) => s.lines.length > 0)
+            .map((section) => <AcquisitionSectionBlock key={section.method} section={section} />)
+        )}
+        <p className="text-sm font-semibold text-black">
+          Grand total received value: {money(receivedGrandTotal)}
+        </p>
       </section>
 
       <section className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
