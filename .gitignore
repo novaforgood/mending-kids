@@ -50,3 +50,7 @@ package-lock.json
 
 # local files
 inventory-changes.txt
+
+# supabase cli local state
+supabase/.temp/
+supabase/.branches/
