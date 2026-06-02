@@ -37,6 +37,7 @@ export default function InventoryPage() {
   const [userEmail, setUserEmail] = useState<string>("anonymous");
 
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -166,7 +167,7 @@ export default function InventoryPage() {
     }
 
     return sortOrder === "ASC"
-      ? String(aVal).localeCompare(String(aVal))
+      ? String(aVal).localeCompare(String(bVal))
       : String(bVal).localeCompare(String(aVal));
   });
 
@@ -535,6 +536,7 @@ export default function InventoryPage() {
         item={selectedItem}
         setItems={setItems}
         onAssignToMission={handleAssignToMission}
+        onAddDocumentation={() => setIsDocModalOpen(true)}
       />
 
       {/* Missions Dropdown Overlay */}
@@ -622,7 +624,7 @@ export default function InventoryPage() {
       />
 
       <DocumentationModal
-        isOpen={false}
+        isOpen={isDocModalOpen}
         preSelectedItemId={selectedItem?.id ?? null}
         items={items.map((i) => ({
           id: i.id,
@@ -631,10 +633,33 @@ export default function InventoryPage() {
           valuation_source: i.valuation_source,
           acquisition_method: i.acquisition_method,
         }))}
-        onClose={() => {}}
-        onNext={async (itemId, marketValue, valuationSource, acquisitionMethod) => {
-          await updateItemDocumentation(itemId, marketValue, valuationSource, acquisitionMethod, userEmail);
-          await loadInventory();
+        onClose={() => setIsDocModalOpen(false)}
+        onNext={async (itemId, marketValue, valuationSource, acquisitionMethod, document) => {
+          setError(null);
+          try {
+            await updateItemDocumentation(
+              itemId,
+              marketValue,
+              valuationSource,
+              acquisitionMethod,
+              userEmail,
+              document
+            );
+            await loadInventory();
+            setIsDocModalOpen(false);
+            if (selectedItem?.id === itemId) {
+              const refreshed = (await fetchInventory()) as InventoryItem[];
+              const updated = refreshed.find((i) => i.id === itemId);
+              if (updated) {
+                setSelectedItem({
+                  ...updated,
+                  expiration: updated.expiration ? new Date(updated.expiration) : new Date(),
+                });
+              }
+            }
+          } catch {
+            setError("Failed to save documentation");
+          }
         }}
       />
 
