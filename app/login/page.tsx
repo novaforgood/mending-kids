@@ -84,14 +84,13 @@ window.location.href = "/dashboard";
         </button>
 
         <div className={styles.linkRow}>
+          <Link className={styles.link} href="/forgot-password">
+            Forgot password?
+          </Link>
           <Link className={styles.link} href="/signup">
             Create an account
           </Link>
         </div>
-
-        <Link className={styles.link} href="/forgot-password">
-  Forgot password?
-</Link>
 
         <div className={styles.footer}>Website created by Nova, Tech for Good</div>
       </div>

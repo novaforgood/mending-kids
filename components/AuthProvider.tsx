@@ -11,7 +11,8 @@ export default function AuthProvider({
   const pathname = usePathname();
   const { loading } = useAuthUser();
 
-  if (loading && pathname !== "/login") return <p className="p-6">Loading...</p>;
+  const publicPaths = ["/login", "/signup", "/forgot-password", "/reset-password"];
+  if (loading && !publicPaths.includes(pathname)) return <p className="p-6">Loading...</p>;
 
   return <>{children}</>;
 }
