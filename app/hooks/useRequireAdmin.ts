@@ -23,7 +23,7 @@ export function useRequireAdmin() {
       const role = user.user_metadata?.role;
 
       if (role !== "admin") {
-        router.push("/intern");
+        router.push("/dashboard");
         return;
       }
 
