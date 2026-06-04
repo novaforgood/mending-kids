@@ -82,7 +82,7 @@ export default function Header() {
             onClick={() => void handleTestLogout()}
             className="font-sans text-xs font-medium text-gray-600 border border-gray-300 rounded-md px-2 py-1.5 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
-            Log out (test)
+            Log out
           </button>
 
         </div>

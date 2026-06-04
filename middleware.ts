@@ -4,9 +4,15 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * Routes that must work without a Supabase session (adjust as you add public pages).
  */
+const PUBLIC_PATHS = [
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+];
+
 function isPublicPath(pathname: string) {
-  if (pathname === "/login" || pathname === "/signup") return true;
-  return false;
+  return PUBLIC_PATHS.includes(pathname);
 }
 
 export async function middleware(request: NextRequest) {

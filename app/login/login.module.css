@@ -29,6 +29,14 @@
   color: #111827;
 }
 
+.field {
+  margin-bottom: 14px;
+}
+
+.required {
+  color: #dc2626;
+}
+
 .formGroup {
   margin-bottom: 14px;
 }
@@ -80,13 +88,30 @@
   background: #1d4ed8;
 }
 
-.linkRow {
-  margin-top: 14px;
+.message {
+  margin-top: 12px;
   text-align: center;
+  font-size: 14px;
+  color: #374151;
+}
+
+.linkRow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  margin-top: 14px;
 }
 
 .link {
   color: #2563eb;
   text-decoration: underline;
   font-size: 14px;
+}
+
+.footer {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
 }
