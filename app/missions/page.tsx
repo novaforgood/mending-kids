@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { fetchMissions, updateMission, deleteMission } from "./actions";
 import { useRouter } from "next/navigation";
 import AddMissionPanel from "./AddMissionPanel";
+import EditMissionPanel from "./[id]/EditMissionPanel";
 
 type Mission = {
   id: number;
@@ -72,6 +73,7 @@ function MissionCard({
   mission,
   tab,
   onClick,
+  onEdit,
   onArchive,
   onRestore,
   onDelete,
@@ -79,6 +81,7 @@ function MissionCard({
   mission: Mission;
   tab: "current" | "archive";
   onClick: () => void;
+  onEdit: () => void;
   onArchive: () => void;
   onRestore: () => void;
   onDelete: () => void;
@@ -187,7 +190,7 @@ function MissionCard({
               {tab === "current" && (
                 <>
                   <MenuOption label="View"    onClick={() => { setMenuOpen(false); onClick(); }} />
-                  <MenuOption label="Edit"    onClick={() => { setMenuOpen(false); onClick(); }} />
+                  <MenuOption label="Edit"    onClick={() => { setMenuOpen(false); onEdit(); }} />
                   <MenuOption label="Archive" onClick={() => { setMenuOpen(false); onArchive(); }} />
                 </>
               )}
@@ -207,6 +210,7 @@ export default function MissionsPage() {
   const router = useRouter();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editMissionId, setEditMissionId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"current" | "archive">("current");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedLocation, setSelectedLocation] = useState<string>("");
@@ -296,6 +300,14 @@ export default function MissionsPage() {
           loadMissions();
         }}
       />
+      {editMissionId !== null && (
+        <EditMissionPanel
+          isOpen={editMissionId !== null}
+          missionId={editMissionId}
+          onClose={() => setEditMissionId(null)}
+          onSaved={() => { setEditMissionId(null); loadMissions(); }}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
@@ -399,6 +411,7 @@ export default function MissionsPage() {
               mission={mission}
               tab={activeTab}
               onClick={() => router.push(`/missions/${mission.id}`)}
+              onEdit={() => setEditMissionId(mission.id)}
               onArchive={() => handleArchive(mission.id)}
               onRestore={() => handleRestore(mission.id)}
               onDelete={() => handleDelete(mission.id)}
