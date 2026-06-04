@@ -29,6 +29,14 @@
   color: #111827;
 }
 
+.field {
+  margin-bottom: 14px;
+}
+
+.required {
+  color: #dc2626;
+}
+
 .formGroup {
   margin-bottom: 14px;
 }
@@ -78,6 +86,13 @@
 
 .button:hover {
   background: #1d4ed8;
+}
+
+.message {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 14px;
+  color: #374151;
 }
 
 .linkRow {

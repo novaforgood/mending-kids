@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { supabaseBrowser as supabase } from "@/lib/supabase/client";
+import styles from "../login/login.module.css";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -18,85 +20,41 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-  <div
-    style={{
-      minHeight: "80vh",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "flex-start",
-      paddingTop: "120px",
-      background: "#f5f5f7",
-    }}
-  >
-    <div
-      style={{
-        width: "100%",
-        maxWidth: "500px",
-        background: "white",
-        padding: "36px",
-        borderRadius: "12px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
-      }}
-    >
-      <h1
-        style={{
-          textAlign: "center",
-          marginBottom: "32px",
-          fontSize: "40px",
-          fontWeight: "700",
-        }}
-      >
-        Reset password
-      </h1>
+    <div className={styles.page}>
+      <div className={styles.card}>
+        <div className={styles.logoWrap}>
+          <Image src="/mending.logo.png" alt="Mending Kids" width={220} height={110} />
+        </div>
 
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Enter your email"
-        style={{
-          width: "100%",
-          padding: "16px",
-          fontSize: "18px",
-          borderRadius: "8px",
-          border: "1px solid #d1d5db",
-          marginBottom: "28px",
-        }}
-      />
+        <div className={styles.title}>Reset password</div>
 
-      <button
-        onClick={handleReset}
-        style={{
-          width: "100%",
-          padding: "16px",
-          fontSize: "20px",
-          fontWeight: "600",
-          borderRadius: "8px",
-          border: "none",
-          background: "#2563eb",
-          color: "white",
-          cursor: "pointer",
-          marginBottom: "24px",
-        }}
-      >
-        Send Reset Email
-      </button>
+        <div className={styles.field}>
+          <label className={styles.label}>
+            Email<span className={styles.required}>*</span>
+          </label>
+          <input
+            className={styles.input}
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
 
-      {message && (
-        <p
-          style={{
-            marginBottom: "16px",
-            textAlign: "center",
-          }}
-        >
-          {message}
-        </p>
-      )}
+        <button className={styles.button} type="button" onClick={handleReset}>
+          Send Reset Email
+        </button>
 
-      <div style={{ textAlign: "center" }}>
-        <Link href="/login">Back to login</Link>
+        {message && <p className={styles.message}>{message}</p>}
+
+        <div className={styles.linkRow}>
+          <Link className={styles.link} href="/login">
+            Back to login
+          </Link>
+        </div>
+
+        <div className={styles.footer}>Website created by Nova, Tech for Good</div>
       </div>
     </div>
-  </div>
-);
+  );
 }
