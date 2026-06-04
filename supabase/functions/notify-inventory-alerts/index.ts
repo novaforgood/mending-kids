@@ -1,3 +1,17 @@
+// Deploy (from repo root):
+//
+//   supabase login
+//   supabase link --project-ref YOUR_PROJECT_REF
+//   supabase secrets set --env-file .env --project-ref YOUR_PROJECT_REF
+//   supabase functions deploy notify-inventory-alerts --project-ref YOUR_PROJECT_REF
+//
+// Invoke manually:
+//
+//   curl -X POST "https://YOUR_PROJECT_REF.supabase.co/functions/v1/notify-inventory-alerts" \
+//     -H "Authorization: Bearer YOUR_ANON_OR_SERVICE_ROLE_KEY"
+//
+// Weekly schedule: see sql/notify-inventory-alerts-cron.sql
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 type InventoryRow = {
@@ -9,21 +23,13 @@ type InventoryRow = {
   location: string | null;
 };
 
-type AlertUser = {
-  email: string;
-  full_name: string | null;
-};
-
 // Prefer PROJECT_* vars (used for local testing against prod data) and fall back to
 // the auto-injected SUPABASE_* vars when deployed.
 const SUPABASE_URL = Deno.env.get("PROJECT_URL") ?? Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY =
   Deno.env.get("PROJECT_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
-
-// Replace with a Resend-verified domain address before production use.
-// For testing only, use "onboarding@resend.dev" (delivers only to your Resend account email).
-const FROM_EMAIL = "onboarding@resend.dev";
+const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "onboarding@resend.dev";
 const FROM_NAME = "Mending Kids Inventory";
 
 Deno.serve(async (_req: Request) => {
@@ -62,30 +68,26 @@ Deno.serve(async (_req: Request) => {
       return json({ ok: true, message: "No alerts today — no emails sent." });
     }
 
-    // 4. Fetch all registered users
-    const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-    if (usersError) throw new Error(`Failed to fetch users: ${usersError.message}`);
+    // 4. Fetch notified email recipients
+    const { data: notifiedRows, error: notifiedError } = await supabase
+      .from("notified_emails")
+      .select("email")
+      .order("created_at", { ascending: true });
 
-    const users: AlertUser[] = (usersData?.users ?? [])
-      .filter((u) => !!u.email)
-      .map((u) => ({
-        email: u.email!,
-        full_name: (u.user_metadata?.full_name as string) ?? null,
-      }));
+    if (notifiedError) throw new Error(`Failed to fetch notified emails: ${notifiedError.message}`);
 
-    if (users.length === 0) {
-      return json({ ok: true, message: "No users to notify." });
+    const emails = (notifiedRows ?? []).map((r) => r.email).filter(Boolean);
+    if (emails.length === 0) {
+      return json({ ok: true, message: "No notified emails configured." });
     }
 
     // 5. Build shared email content once
     const subject = buildSubject(lowStockItems.length, expiringItems.length);
-    const htmlTemplate = buildHtmlTemplate(lowStockItems, expiringItems, now);
+    const html = buildHtmlTemplate(lowStockItems, expiringItems, now);
 
-    // 6. Send one email per user concurrently
+    // 6. Send one email per recipient concurrently
     const results = await Promise.allSettled(
-      users.map((user) =>
-        sendEmail(user.email, personalizeHtml(htmlTemplate, user.full_name), subject)
-      )
+      emails.map((email) => sendEmail(email, html, subject))
     );
 
     const succeeded = results.filter((r) => r.status === "fulfilled").length;
@@ -93,7 +95,7 @@ Deno.serve(async (_req: Request) => {
     results.forEach((r, i) => {
       if (r.status === "rejected") {
         failed.push({
-          email: users[i].email,
+          email: emails[i],
           reason: (r as PromiseRejectedResult).reason?.message ?? "unknown",
         });
       }
@@ -217,7 +219,7 @@ function buildHtmlTemplate(
     </div>
 
     <div style="padding:22px 28px;">
-      <p style="color:#374151;font-size:14px;margin:0 0 6px;">{{GREETING}}</p>
+      <p style="color:#374151;font-size:14px;margin:0 0 6px;">Hello,</p>
       <p style="color:#6b7280;font-size:13px;margin:0 0 4px;">The following inventory items require your attention.</p>
 
       ${lowStockSection}
@@ -232,15 +234,11 @@ function buildHtmlTemplate(
     </div>
 
     <div style="background:#f9fafb;padding:14px 28px;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb;">
-      You are receiving this because you are a registered Mending Kids team member. This is an automated daily digest.
+      You are receiving this because your address is on the Mending Kids notification list. This is an automated daily digest.
     </div>
   </div>
 </body>
 </html>`;
-}
-
-function personalizeHtml(template: string, fullName: string | null): string {
-  return template.replace("{{GREETING}}", fullName ? `Hello, ${fullName}!` : "Hello,");
 }
 
 async function sendEmail(to: string, html: string, subject: string): Promise<void> {
