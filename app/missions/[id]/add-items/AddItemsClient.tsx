@@ -120,20 +120,22 @@ export default function AddItemsClient({ missionId, inventory }: Props) {
 
 
     try {
-  await Promise.all(
-    Object.entries(selected).map(([inventoryId, qty]) =>
-      addMissionItem({
-        mission_id: missionId,
-        inventory_id: Number(inventoryId),
-        quantity: qty,
-      })
-    )
-  );
-} catch (err: unknown) {
-  const error = err as Error;
-  setPopupMessage(error.message || "You do not have permission.");
-  setShowPopup(true);
-}
+      await Promise.all(
+        Object.entries(selected).map(([inventoryId, qty]) =>
+          addMissionItem({
+            mission_id: missionId,
+            inventory_id: Number(inventoryId),
+            quantity: qty,
+          })
+        )
+      );
+      window.location.href = `/missions/${missionId}`;
+    } catch (err: unknown) {
+      const error = err as Error;
+      setPopupMessage(error.message || "Failed to add items.");
+      setShowPopup(true);
+      setSaving(false);
+    }
   };
 
   const selectedItems = inventory.filter((item) => item.id in selected);
