@@ -257,32 +257,12 @@ export default function InventoryPage() {
     return matchesSearch && matchesMission && matchesExpiration;
   });
 
-  const activeItems = filteredItems.filter((item) => {
-    const usedQuantity = item.mission_inventory?.reduce(
-      (sum, mi) => sum + (mi.quantity_used ?? 0), 0
-    ) ?? 0;
-    const availableQuantity = item.quantity - usedQuantity;
-    return item.active && availableQuantity > 0;
-  });
+  const activeItems = filteredItems.filter((item) => item.active);
 
-  const archivedItems = filteredItems.filter((item) => {
-    const usedQuantity = item.mission_inventory?.reduce(
-      (sum, mi) => sum + (mi.quantity_used ?? 0), 0
-    ) ?? 0;
-    const availableQuantity = item.quantity - usedQuantity;
-    return !item.active || availableQuantity < 1;
-  });
+  const archivedItems = filteredItems.filter((item) => !item.active);
 
   const createRows = (data: InventoryItem[]) =>
     data.map((item) => {
-      const usedQuantity =
-        item.mission_inventory?.reduce(
-          (sum, missionItem) => sum + (missionItem.quantity_used ?? 0),
-          0
-        ) ?? 0;
-
-      const availableQuantity = item.quantity - usedQuantity;
-
       return {
         key: String(item.id),
         item,
@@ -296,7 +276,7 @@ export default function InventoryPage() {
           {
             content: (
               <Cell>
-                <CustomLozenge>{availableQuantity}</CustomLozenge>
+                <CustomLozenge>{item.quantity}</CustomLozenge>
               </Cell>
             ),
           },

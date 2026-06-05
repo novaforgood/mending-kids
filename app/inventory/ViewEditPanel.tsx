@@ -236,7 +236,9 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
                     entry.date_added
                       ? new Date(entry.date_added + "T00:00:00").toLocaleDateString()
                       : "-",
-                    `+${entry.quantity_added}`,
+                    entry.quantity_added >= 0
+                      ? `+${entry.quantity_added}`
+                      : String(entry.quantity_added),
                     entry.added_by || "-",
                     entry.notes || "-",
                   ],
