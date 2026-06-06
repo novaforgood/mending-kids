@@ -71,10 +71,10 @@ export default function Header() {
 
           <button
             type="button"
-            onClick={() => router.push("/login")}
+            onClick={() => router.push("/accounts")}
             className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-400"
           >
-            <PersonAvatarIcon label="Profile" />
+            <PersonAvatarIcon label="Manage Accounts" />
           </button>
 
           <button

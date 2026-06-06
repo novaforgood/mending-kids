@@ -28,6 +28,7 @@ export default function AccountsPage() {
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<AccountRole>("intern");
+  const [filter, setFilter] = useState<"all" | "admin" | "intern">("all");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -87,6 +88,15 @@ export default function AccountsPage() {
 
   if (loading) return <main style={{ padding: "40px" }}>Loading...</main>;
   if (!authorized) return null;
+
+  const filteredAccounts =
+    filter === "all" ? accounts : accounts.filter((a) => a.role === filter);
+
+  const filterOptions: { value: typeof filter; label: string }[] = [
+    { value: "all", label: "All" },
+    { value: "admin", label: "Admins" },
+    { value: "intern", label: "Interns" },
+  ];
 
   return (
     <div className="min-h-screen bg-white p-8 text-black">
@@ -175,6 +185,23 @@ export default function AccountsPage() {
           </p>
         )}
 
+        <div className="flex items-center gap-1 mb-3" role="group" aria-label="Filter accounts by role">
+          {filterOptions.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setFilter(opt.value)}
+              className={`px-3 py-1 text-sm rounded border ${
+                filter === opt.value
+                  ? "bg-indigo-700 text-white border-indigo-700"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -188,7 +215,7 @@ export default function AccountsPage() {
                 </tr>
               </thead>
               <tbody>
-                {accounts.map((row) => (
+                {filteredAccounts.map((row) => (
                   <tr key={row.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap">{row.email}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{row.full_name || "—"}</td>
@@ -208,7 +235,7 @@ export default function AccountsPage() {
                   </tr>
                 ))}
 
-                {accounts.length === 0 && (
+                {filteredAccounts.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                       No accounts found
