@@ -250,26 +250,27 @@ export async function updateItemQuantity(
 
   if (error) throw new Error(error.message);
 
-  await logInventoryChange(
-    newQuantity === 0 ? "archived" : "edited",
-    userEmail,
-    id,
-    oldItem.item_description,
-    {
-      quantity: {
-        old: String(oldItem.quantity),
-        new: String(newQuantity),
-      },
-      ...(newQuantity === 0
-        ? {
-            active: {
-              old: String(oldItem.active),
-              new: "false",
-            },
-          }
-        : {}),
+  // Only log changes if something actually changed
+  const quantityChanged = String(oldItem.quantity) !== String(newQuantity);
+  const becameArchived = newQuantity === 0 && oldItem.active;
+
+  if (quantityChanged || becameArchived) {
+    const changes: Record<string, { old: string; new: string }> = {};
+    if (quantityChanged) {
+      changes.quantity = { old: String(oldItem.quantity), new: String(newQuantity) };
     }
-  );
+    if (becameArchived) {
+      changes.active = { old: String(oldItem.active), new: "false" };
+    }
+
+    await logInventoryChange(
+      newQuantity === 0 ? "archived" : "edited",
+      userEmail,
+      id,
+      oldItem.item_description,
+      Object.keys(changes).length > 0 ? changes : undefined
+    );
+  }
 }
 
 /* Update item details */
@@ -299,7 +300,6 @@ export async function updateItemDetails(
 
   if (error) throw new Error(error.message);
 
-  // SAFE CHANGE BUILDER (no undefined values allowed)
   const changes: Record<string, { old: string; new: string }> = {};
 
   if (payload.manufacturer !== undefined && payload.manufacturer !== oldItem.manufacturer) {

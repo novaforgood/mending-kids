@@ -276,15 +276,18 @@ export async function updateMissionItem(id: number, quantity: number) {
     .eq("id", id);
   if (error) throw new Error(error.message);
 
-  await supabaseServer.from("activity_log").insert({
-    action_type: "updated",
-    performed_by: "system",
-    description: `Updated quantity from ${mi.quantity_used} to ${quantity} for "${inv.item_description}" on mission`,
-    item_name: inv.item_description,
-    quantity: quantity,
-    mission_id: mi.mission_id,
-    inventory_id: mi.inventory_id,
-  });
+  // Only log mission inventory updates when the quantity actually changed
+  if (mi.quantity_used !== quantity) {
+    await supabaseServer.from("activity_log").insert({
+      action_type: "updated",
+      performed_by: "system",
+      description: `Updated quantity from ${mi.quantity_used} to ${quantity} for "${inv.item_description}" on mission`,
+      item_name: inv.item_description,
+      quantity: quantity,
+      mission_id: mi.mission_id,
+      inventory_id: mi.inventory_id,
+    });
+  }
 }
 
 /** Update status for a mission inventory item */
