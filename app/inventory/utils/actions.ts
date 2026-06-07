@@ -14,7 +14,9 @@ async function logInventoryChange(
   user: string,
   itemId?: number,
   itemDescription?: string,
-  changes?: Record<string, { old: string; new: string }>
+  changes?: Record<string, { old: string; new: string }>,
+  quantity?: number,
+  missionId?: number
 ) {
   let description = itemDescription || "";
 
@@ -36,6 +38,8 @@ async function logInventoryChange(
     description,
     item_name: itemDescription,
     inventory_id: itemId,
+    quantity,
+    mission_id: missionId,
   });
 }
 
@@ -68,6 +72,21 @@ function money2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function getInventoryStatus(quantity: number, expiration: Date | string | null | undefined): string {
+  const now = new Date();
+  const expirationDate = expiration ? new Date(expiration) : null;
+
+  if (expirationDate && !Number.isNaN(expirationDate.getTime()) && expirationDate < now) {
+    return "Expired";
+  }
+
+  if (quantity < 50) {
+    return "Low Stock";
+  }
+
+  return "In Stock";
+}
+
 /* Add a new inventory item */
 export async function addItem(payload: InventoryPayload, userEmail: string) {
   const { document, ...inventoryFields } = payload;
@@ -75,12 +94,17 @@ export async function addItem(payload: InventoryPayload, userEmail: string) {
   const insertRow = {
     ...inventoryFields,
     initial_quantity: payload.quantity,
+    created_by: userEmail,
     total_value: money2(payload.quantity * payload.market_value_per_unit),
+    status: getInventoryStatus(payload.quantity, payload.expiration),
   };
 
   let { data, error } = await supabaseServer
     .from("inventory")
-    .insert(insertRow)
+    .insert({
+      ...payload,
+      total_value: money2(payload.quantity * payload.market_value_per_unit),
+    })
     .select()
     .single();
 
@@ -113,7 +137,9 @@ export async function addItem(payload: InventoryPayload, userEmail: string) {
     "added",
     userEmail,
     data.id,
-    payload.item_description
+    payload.item_description,
+    undefined,
+    payload.quantity
   );
 
   return data.id as number;
@@ -151,10 +177,6 @@ export async function updateItemDocumentation(
     .eq("id", id);
 
   if (error) throw new Error(error.message);
-
-  if (document) {
-    await appendInventoryDocument(id, document, userEmail);
-  }
 
   await logInventoryChange(
     "edited",
@@ -206,18 +228,20 @@ export async function updateItemQuantity(
 ) {
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
-    .select("quantity, item_description, active, market_value_per_unit")
+    .select("quantity, item_description, active, market_value_per_unit, expiration")
     .eq("id", id)
     .single();
 
   if (fetchError) throw new Error(fetchError.message);
 
-  const updates: Record<string, any> = {
-    quantity: newQuantity,
-    total_value: newQuantity * oldItem.market_value_per_unit,
-  };
+  const clampedQuantity = Math.max(0, newQuantity);
 
-  updates.active = newQuantity > 0;
+  const updates = {
+    quantity: clampedQuantity,
+    total_value: money2(clampedQuantity * oldItem.market_value_per_unit),
+    active: clampedQuantity > 0,
+    status: getInventoryStatus(clampedQuantity, oldItem.expiration),
+  };
 
   const { error } = await supabaseServer
     .from("inventory")
@@ -226,29 +250,30 @@ export async function updateItemQuantity(
 
   if (error) throw new Error(error.message);
 
-  await logInventoryChange(
-    newQuantity === 0 ? "archived" : "edited",
-    userEmail,
-    id,
-    oldItem.item_description,
-    {
-      quantity: {
-        old: String(oldItem.quantity),
-        new: String(newQuantity),
-      },
-      ...(newQuantity === 0
-        ? {
-            active: {
-              old: String(oldItem.active),
-              new: "false",
-            },
-          }
-        : {}),
+  // Only log changes if something actually changed
+  const quantityChanged = String(oldItem.quantity) !== String(newQuantity);
+  const becameArchived = newQuantity === 0 && oldItem.active;
+
+  if (quantityChanged || becameArchived) {
+    const changes: Record<string, { old: string; new: string }> = {};
+    if (quantityChanged) {
+      changes.quantity = { old: String(oldItem.quantity), new: String(newQuantity) };
     }
-  );
+    if (becameArchived) {
+      changes.active = { old: String(oldItem.active), new: "false" };
+    }
+
+    await logInventoryChange(
+      newQuantity === 0 ? "archived" : "edited",
+      userEmail,
+      id,
+      oldItem.item_description,
+      Object.keys(changes).length > 0 ? changes : undefined
+    );
+  }
 }
 
-/* Update item details (FIXED VERSION) */
+/* Update item details */
 export async function updateItemDetails(
   id: number,
   payload: UpdateItemDetailsPayload,
@@ -265,7 +290,7 @@ export async function updateItemDetails(
   if (fetchError) throw new Error(fetchError.message);
 
   const cleanPayload = Object.fromEntries(
-    Object.entries(payload).filter(([_, v]) => v !== undefined)
+    Object.entries(payload).filter(([, v]) => v !== undefined)
   );
 
   const { error } = await supabaseServer
@@ -275,71 +300,84 @@ export async function updateItemDetails(
 
   if (error) throw new Error(error.message);
 
-  // SAFE CHANGE BUILDER (no undefined values allowed)
   const changes: Record<string, { old: string; new: string }> = {};
 
-  if (payload.manufacturer !== undefined) {
+  if (payload.manufacturer !== undefined && payload.manufacturer !== oldItem.manufacturer) {
     changes.manufacturer = {
       old: oldItem.manufacturer || "",
       new: payload.manufacturer,
     };
   }
 
-  if (payload.reference_number !== undefined) {
+  if (
+    payload.reference_number !== undefined &&
+    payload.reference_number !== oldItem.reference_number
+  ) {
     changes.reference_number = {
       old: oldItem.reference_number || "",
       new: payload.reference_number,
     };
   }
 
-  if (payload.lot_number !== undefined) {
+  if (payload.lot_number !== undefined && payload.lot_number !== oldItem.lot_number) {
     changes.lot_number = {
       old: oldItem.lot_number || "",
       new: payload.lot_number,
     };
   }
 
-  if (payload.unit_of_measure !== undefined) {
+  if (
+    payload.unit_of_measure !== undefined &&
+    payload.unit_of_measure !== oldItem.unit_of_measure
+  ) {
     changes.unit_of_measure = {
       old: oldItem.unit_of_measure || "",
       new: payload.unit_of_measure,
     };
   }
 
-  if (payload.typical_shelf_life !== undefined) {
+  if (
+    payload.typical_shelf_life !== undefined &&
+    payload.typical_shelf_life !== oldItem.typical_shelf_life
+  ) {
     changes.typical_shelf_life = {
       old: oldItem.typical_shelf_life || "",
       new: payload.typical_shelf_life,
     };
   }
 
-  if (payload.location !== undefined) {
+  if (payload.location !== undefined && payload.location !== oldItem.location) {
     changes.location = {
       old: oldItem.location || "",
       new: payload.location,
     };
   }
 
-  if (payload.internal_notes !== undefined) {
+  if (
+    payload.internal_notes !== undefined &&
+    payload.internal_notes !== oldItem.internal_notes
+  ) {
     changes.internal_notes = {
       old: oldItem.internal_notes || "",
       new: payload.internal_notes || "",
     };
   }
-  if (payload.active !== undefined) {
+  if (payload.active !== undefined && payload.active !== oldItem.active) {
     changes.active = {
       old: String(oldItem.active),
       new: String(payload.active),
     };
   }
 
-  await logInventoryChange(
-    "edited",
-    userEmail,
-    id,
-    oldItem.item_description,
-    changes
-  );
+  if (Object.keys(changes).length > 0) {
+    await logInventoryChange(
+      "edited",
+      userEmail,
+      id,
+      oldItem.item_description,
+      changes
+    );
+  }
 }
 
 /* Add quantity to an existing item + record an inventory entry */
@@ -352,13 +390,13 @@ export async function addItemQuantity(
   // Fetch current item state
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
-    .select("quantity, item_description, market_value_per_unit, status")
+    .select("quantity, item_description, market_value_per_unit, active, expiration")
     .eq("id", id)
     .single();
 
   if (fetchError) throw new Error(fetchError.message);
 
-  const newQuantity = oldItem.quantity + quantityToAdd;
+  const newQuantity = Math.max(0, oldItem.quantity + quantityToAdd);
   const newTotalValue = money2(newQuantity * (oldItem.market_value_per_unit ?? 0));
 
   // Update inventory row
@@ -367,8 +405,8 @@ export async function addItemQuantity(
     .update({
       quantity: newQuantity,
       total_value: newTotalValue,
-      // Re-activate if it was archived/depleted
-      ...(oldItem.status === "archived" ? { status: "active" } : {}),
+      active: newQuantity > 0,
+      status: getInventoryStatus(newQuantity, oldItem.expiration),
     })
     .eq("id", id);
 
@@ -382,7 +420,7 @@ export async function addItemQuantity(
       quantity_added: quantityToAdd,
       notes: notes || null,
       added_by: userEmail,
-      date_added: new Date().toISOString().split("T")[0], // YYYY-MM-DD
+      date_added: new Date().toISOString().split("T")[0],
     });
 
   if (entryError) throw new Error(entryError.message);
@@ -398,7 +436,8 @@ export async function addItemQuantity(
         old: String(oldItem.quantity),
         new: String(newQuantity),
       },
-    }
+    },
+    quantityToAdd
   );
 }
 

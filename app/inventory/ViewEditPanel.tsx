@@ -135,7 +135,7 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
     this.setState({ isAddQuantityOpen: false });
   }
 
-  renderExpirationLozenge(date?: Date) {
+  renderExpirationLozenge(date?: Date | null) {
     if (!date) return null;
     const expText = `EXP ${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
     return <CustomLozenge appearance="exp">{expText}</CustomLozenge>;
@@ -236,7 +236,9 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
                     entry.date_added
                       ? new Date(entry.date_added + "T00:00:00").toLocaleDateString()
                       : "-",
-                    `+${entry.quantity_added}`,
+                    entry.quantity_added >= 0
+                      ? `+${entry.quantity_added}`
+                      : String(entry.quantity_added),
                     entry.added_by || "-",
                     entry.notes || "-",
                   ],
@@ -439,7 +441,7 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
             <div style={{ borderTop: "1px solid #DFE1E6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
                 <CustomLozenge appearance="stat">{item.status}</CustomLozenge>
-                {this.renderExpirationLozenge(item.expiration)}
+                {this.renderExpirationLozenge(item.expiration) ?? null}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
                 <CustomLozenge appearance="unit_stat">
@@ -450,13 +452,16 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
           }
           footer={
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, width: "100%" }}>
-              <CustomButton backgroundColor="#EBECF0" textColor="#172B4D" onClick={onClose}>
+              <CustomButton 
+                backgroundColor="#EBECF0"
+                hoverColor="#DFE1E6"
+                textColor="#172B4D" 
+                onClick={onClose}
+              >
                 Cancel
               </CustomButton>
               {this.state.isEditing ? (
                 <CustomButton
-                  backgroundColor="#422670"
-                  textColor="#FFFFFF"
                   onClick={async () => {
                     if (!item) return;
                     await updateItemDetails(item.id, this.state.form, "user@email.com");
@@ -467,8 +472,6 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
                 </CustomButton>
               ) : (
                 <CustomButton
-                  backgroundColor="#422670"
-                  textColor="#FFFFFF"
                   iconBefore={<EditIcon label="Edit Item" />}
                   onClick={() => this.setState({ isEditing: true })}
                 >
@@ -482,8 +485,8 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
             title={item.item_description}
             breadcrumbs={
               <Breadcrumbs>
-                <BreadcrumbsItem text={item.reference_number ?? ""} />
-                <BreadcrumbsItem text={item.location ?? ""} />
+                <BreadcrumbsItem text={item.reference_number ?? "-"} />
+                <BreadcrumbsItem text={item.location ?? "-"} />
               </Breadcrumbs>
             }
           />
