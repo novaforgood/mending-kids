@@ -361,29 +361,66 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
           <div
             style={{
               marginBottom: 12,
-              color: "#505258",
-              fontFamily: "Atlassian Sans, sans-serif",
-              fontSize: 16,
-              fontWeight: 653,
-              lineHeight: "24px",
-              fontFeatureSettings: "'liga' off, 'calt' off",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
-            Supporting Documents
+            <span
+              style={{
+                color: "#505258",
+                fontFamily: "Atlassian Sans, sans-serif",
+                fontSize: 16,
+                fontWeight: 653,
+                lineHeight: "24px",
+                fontFeatureSettings: "'liga' off, 'calt' off",
+              }}
+            >
+              Supporting Documents
+            </span>
+            {this.props.onAddDocumentation && (
+              <CustomButton
+                backgroundColor="#422670"
+                textColor="#FFFFFF"
+                onClick={this.props.onAddDocumentation}
+              >
+                Add documentation
+              </CustomButton>
+            )}
           </div>
-          <ScrollablePaginatedTable
-            columns={[
-              { key: "name", header: "Document Name", width: 150 },
-              { key: "type", header: "Type", width: 100 },
-              { key: "uploaded_by", header: "Uploaded By", width: 100 },
-              { key: "date", header: "Date", width: 100 },
-            ]}
-            rows={(item.documents ?? []).map((doc: DocumentEntry) => ({
-              key: doc.id,
-              cells: [doc.name, doc.type, doc.uploaded_by, new Date(doc.created_at).toLocaleDateString()],
-            }))}
-            rowsPerPage={5}
-          />
+          {(item.documents ?? []).length === 0 ? (
+            <p style={{ fontSize: 13, color: "#6B778C" }}>No documents uploaded yet.</p>
+          ) : (
+            <ScrollablePaginatedTable
+              columns={[
+                { key: "name", header: "Document Name", width: 150 },
+                { key: "type", header: "Type", width: 100 },
+                { key: "uploaded_by", header: "Uploaded By", width: 100 },
+                { key: "date", header: "Date", width: 100 },
+              ]}
+              rows={(item.documents ?? []).map((doc: DocumentEntry) => ({
+                key: doc.id,
+                cells: [
+                  doc.url ? (
+                    <a
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: "#0052CC", textDecoration: "underline" }}
+                    >
+                      {doc.name}
+                    </a>
+                  ) : (
+                    doc.name
+                  ),
+                  doc.type,
+                  doc.uploaded_by,
+                  new Date(doc.created_at).toLocaleDateString(),
+                ],
+              }))}
+              rowsPerPage={5}
+            />
+          )}
         </div>
       </div>
     );

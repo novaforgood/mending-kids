@@ -61,16 +61,20 @@ export default function Header() {
             <NotificationIcon label="Notifications" />
           </button>
 
-          <div className="w-5 h-5 text-gray-700 cursor-pointer flex items-center justify-center">
+          <button
+            type="button"
+            onClick={() => router.push("/settings")}
+            className="w-5 h-5 text-gray-700 cursor-pointer flex items-center justify-center hover:text-gray-900"
+          >
             <SettingsIcon label="Settings" />
-          </div>
+          </button>
 
           <button
             type="button"
-            onClick={() => router.push("/login")}
+            onClick={() => router.push("/accounts")}
             className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-400"
           >
-            <PersonAvatarIcon label="Profile" />
+            <PersonAvatarIcon label="Manage Accounts" />
           </button>
 
           <button
@@ -78,7 +82,7 @@ export default function Header() {
             onClick={() => void handleTestLogout()}
             className="font-sans text-xs font-medium text-gray-600 border border-gray-300 rounded-md px-2 py-1.5 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
-            Log out (test)
+            Log out
           </button>
 
         </div>
@@ -127,6 +131,19 @@ export default function Header() {
                   >
                     <AssetsIcon label="Inventory" />
                     <span>Inventory</span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSidebarOpen(false)
+                      router.push("/audit-report")
+                    }}
+                    className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-gray-100"
+                  >
+                    <DashboardIcon label="Audit Report" />
+                    <span>Audit Report</span>
                   </button>
                 </li>
               </ul>

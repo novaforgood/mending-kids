@@ -1,7 +1,13 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabase/server";
-import { InventoryPayload, ChangeType, UpdateItemDetailsPayload } from "./types";
+import {
+  InventoryPayload,
+  ChangeType,
+  UpdateItemDetailsPayload,
+  DocumentUploadPayload,
+} from "./types";
+import { appendInventoryDocument } from "./documents";
 
 async function logInventoryChange(
   type: ChangeType,
@@ -83,26 +89,49 @@ function getInventoryStatus(quantity: number, expiration: Date | string | null |
 
 /* Add a new inventory item */
 export async function addItem(payload: InventoryPayload, userEmail: string) {
-  const { data, error } = await supabaseServer
+  const { document, ...inventoryFields } = payload;
+
+  const insertRow = {
+    ...inventoryFields,
+    initial_quantity: payload.quantity,
+    created_by: userEmail,
+    total_value: money2(payload.quantity * payload.market_value_per_unit),
+    status: getInventoryStatus(payload.quantity, payload.expiration),
+  };
+
+  let { data, error } = await supabaseServer
     .from("inventory")
     .insert({
       ...payload,
-      created_by: userEmail,
       total_value: money2(payload.quantity * payload.market_value_per_unit),
-      status: getInventoryStatus(payload.quantity, payload.expiration),
     })
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error?.message?.includes("initial_quantity")) {
+    const { initial_quantity: _ignored, ...withoutInit } = insertRow;
+    ({ data, error } = await supabaseServer
+      .from("inventory")
+      .insert(withoutInit)
+      .select()
+      .single());
+  }
 
-  await supabaseServer.from("inventory_entries").insert({
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Failed to create inventory item");
+
+  const { error: entryError } = await supabaseServer.from("inventory_entries").insert({
     inventory_id: data.id,
     quantity_added: payload.quantity,
-    notes: "Initial quantity",
+    notes: "Initial receipt",
     added_by: userEmail,
     date_added: new Date().toISOString().split("T")[0],
   });
+  if (entryError) throw new Error(entryError.message);
+
+  if (document) {
+    await appendInventoryDocument(data.id, document, userEmail);
+  }
 
   await logInventoryChange(
     "added",
@@ -112,6 +141,8 @@ export async function addItem(payload: InventoryPayload, userEmail: string) {
     undefined,
     payload.quantity
   );
+
+  return data.id as number;
 }
 
 /* Update documentation fields on an existing item */
@@ -120,7 +151,8 @@ export async function updateItemDocumentation(
   marketValuePerUnit: number,
   valuationSource: string,
   acquisitionMethod: string,
-  userEmail: string
+  userEmail: string,
+  document?: DocumentUploadPayload
 ) {
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
@@ -146,38 +178,26 @@ export async function updateItemDocumentation(
 
   if (error) throw new Error(error.message);
 
-  const changes: Record<string, { old: string; new: string }> = {};
-
-  if (oldItem.market_value_per_unit !== marketValuePerUnit) {
-    changes.market_value_per_unit = {
-      old: String(oldItem.market_value_per_unit),
-      new: String(marketValuePerUnit),
-    };
-  }
-
-  if ((oldItem.valuation_source || "") !== valuationSource) {
-    changes.valuation_source = {
-      old: oldItem.valuation_source || "",
-      new: valuationSource,
-    };
-  }
-
-  if ((oldItem.acquisition_method || "") !== acquisitionMethod) {
-    changes.acquisition_method = {
-      old: oldItem.acquisition_method || "",
-      new: acquisitionMethod,
-    };
-  }
-
-  if (Object.keys(changes).length > 0) {
-    await logInventoryChange(
-      "edited",
-      userEmail,
-      id,
-      oldItem.item_description,
-      changes
-    );
-  }
+  await logInventoryChange(
+    "edited",
+    userEmail,
+    id,
+    oldItem.item_description,
+    {
+      market_value_per_unit: {
+        old: String(oldItem.market_value_per_unit),
+        new: String(marketValuePerUnit),
+      },
+      valuation_source: {
+        old: oldItem.valuation_source || "",
+        new: valuationSource,
+      },
+      acquisition_method: {
+        old: oldItem.acquisition_method || "",
+        new: acquisitionMethod,
+      },
+    }
+  );
 }
 
 /* Delete item */

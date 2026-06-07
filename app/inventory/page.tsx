@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CustomDynamicTable from "./components/custom-dynamic-table";
 import CustomButton from "./components/custom-button";
-import { IconButton } from "@atlaskit/button/new";
+import Button, { IconButton } from "@atlaskit/button/new";
 import CustomLozenge from "./components/custom-lozenge";
 import DropdownMenu, {
   DropdownItem,
@@ -16,9 +16,10 @@ import AddQuantityModal from "./components/AddQuantityModal";
 import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MoreIcon from "@atlaskit/icon/core/show-more-horizontal";
-import ChevronDownIcon from '@atlaskit/icon/core/chevron-down';
+import DownloadIcon from "@atlaskit/icon/core/arrow-down";
+import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import FilterIcon from '@atlaskit/icon/core/filter';
-import SearchIcon from '@atlaskit/icon/core/search';
+import SearchIcon from "@atlaskit/icon/core/search";
 
 import { fetchInventory, addItem, updateItemDocumentation, updateItemDetails, deleteItem, addItemQuantity } from "./utils/actions";
 import { fetchMissions } from "@/app/missions/actions";
@@ -37,12 +38,34 @@ export default function InventoryPage() {
   const [userEmail, setUserEmail] = useState<string>("");
 
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"ASC" | "DESC" | null>(null);
 
   const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  async function handleExport(format: "csv" | "pdf") {
+    setIsExporting(true);
+    try {
+      const res = await fetch(`/api/inventory/export?format=${format}`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `inventory-${Date.now()}.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError(`Failed to export ${format.toUpperCase()}`);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [selectionClearSignal, setSelectionClearSignal] = useState(0);
 
@@ -356,9 +379,27 @@ export default function InventoryPage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <h1 style={{ fontSize: 24, fontWeight: 600 }}>Inventory</h1>
-        <CustomButton backgroundColor="#422670" textColor="#FFFFFF" iconBefore={<AddIcon label="" />} onClick={() => setIsPanelOpen(true)}>
-          Add Item
-        </CustomButton>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button
+            appearance="subtle"
+            iconBefore={DownloadIcon}
+            isDisabled={isExporting}
+            onClick={() => handleExport("csv")}
+          >
+            Export CSV
+          </Button>
+          <Button
+            appearance="subtle"
+            iconBefore={DownloadIcon}
+            isDisabled={isExporting}
+            onClick={() => handleExport("pdf")}
+          >
+            Export PDF
+          </Button>
+          <CustomButton backgroundColor="#422670" textColor="#FFFFFF" iconBefore={<AddIcon label="" />} onClick={() => setIsPanelOpen(true)}>
+            Add Item
+          </CustomButton>
+        </div>
       </div>
 
       <div
@@ -538,6 +579,7 @@ export default function InventoryPage() {
         item={selectedItem}
         setItems={setItems}
         onAssignToMission={handleAssignToMission}
+        onAddDocumentation={() => setIsDocModalOpen(true)}
       />
 
       {/* Missions Dropdown Overlay */}
@@ -625,7 +667,7 @@ export default function InventoryPage() {
       />
 
       <DocumentationModal
-        isOpen={false}
+        isOpen={isDocModalOpen}
         preSelectedItemId={selectedItem?.id ?? null}
         items={items.map((i) => ({
           id: i.id,
@@ -634,10 +676,33 @@ export default function InventoryPage() {
           valuation_source: i.valuation_source,
           acquisition_method: i.acquisition_method,
         }))}
-        onClose={() => {}}
-        onNext={async (itemId, marketValue, valuationSource, acquisitionMethod) => {
-          await updateItemDocumentation(itemId, marketValue, valuationSource, acquisitionMethod, userEmail);
-          await loadInventory();
+        onClose={() => setIsDocModalOpen(false)}
+        onNext={async (itemId, marketValue, valuationSource, acquisitionMethod, document) => {
+          setError(null);
+          try {
+            await updateItemDocumentation(
+              itemId,
+              marketValue,
+              valuationSource,
+              acquisitionMethod,
+              userEmail,
+              document
+            );
+            await loadInventory();
+            setIsDocModalOpen(false);
+            if (selectedItem?.id === itemId) {
+              const refreshed = (await fetchInventory()) as InventoryItem[];
+              const updated = refreshed.find((i) => i.id === itemId);
+              if (updated) {
+                setSelectedItem({
+                  ...updated,
+                  expiration: updated.expiration ? new Date(updated.expiration) : new Date(),
+                });
+              }
+            }
+          } catch {
+            setError("Failed to save documentation");
+          }
         }}
       />
 

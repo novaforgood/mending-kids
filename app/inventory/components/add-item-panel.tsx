@@ -5,7 +5,8 @@ import Button from "@atlaskit/button/new";
 import Textfield from "@atlaskit/textfield";
 import CameraIcon from "@atlaskit/icon/core/camera";
 import LinkIcon from "@atlaskit/icon/core/link";
-import type { InventoryPayload } from "../utils/types";
+import type { DocumentUploadPayload, InventoryPayload } from "../utils/types";
+import { fileToDocumentUpload } from "../utils/file-upload";
 import ValuationSuggestedSources from "./ValuationSuggestedSources";
 import { SidePanel } from "./SidePanel";
 import CustomButton from "./custom-button";
@@ -21,6 +22,7 @@ type UploadedFile = {
   name: string;
   date: string;
   preview: string | null;
+  file: File;
 };
 
 export default function AddItemPanel({
@@ -81,6 +83,7 @@ export default function AddItemPanel({
     reader.onload = (e) => {
       setUploadedFile({
         name: file.name,
+        file,
         date: new Date().toLocaleString("en-US", {
           day: "2-digit",
           month: "short",
@@ -118,6 +121,12 @@ export default function AddItemPanel({
       if (validateStep1()) setStep(2);
     } else {
       if (!validateStep2()) return;
+
+      let document: DocumentUploadPayload | undefined;
+      if (uploadedFile?.file) {
+        document = await fileToDocumentUpload(uploadedFile.file);
+      }
+
       await onSave({
         item_description: itemDescription,
         reference_number: referenceNumber,
@@ -133,6 +142,7 @@ export default function AddItemPanel({
         quantity: parseInt(quantity) || 0,
         status: "IN STORAGE",
         mission: "",
+        document,
       });
     }
   }

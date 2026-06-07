@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser as supabase } from "@/lib/supabase/client";
 
-export default function AdminPage() {
+export function useRequireAdmin() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -22,22 +23,16 @@ export default function AdminPage() {
       const role = user.user_metadata?.role;
 
       if (role !== "admin") {
-        router.push("/intern");
+        router.push("/dashboard");
         return;
       }
 
+      setAuthorized(true);
       setLoading(false);
     };
 
     checkAccess();
   }, [router]);
 
-  if (loading) return <main style={{ padding: "40px" }}>Loading...</main>;
-
-  return (
-    <main style={{ padding: "40px" }}>
-      <h1>Admin Dashboard</h1>
-      <p>This is the admin flow.</p>
-    </main>
-  );
+  return { loading, authorized };
 }

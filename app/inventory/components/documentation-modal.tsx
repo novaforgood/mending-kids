@@ -6,6 +6,8 @@ import Textfield from "@atlaskit/textfield";
 import CameraIcon from "@atlaskit/icon/core/camera";
 import LinkIcon from "@atlaskit/icon/core/link";
 import ValuationSuggestedSources from "./ValuationSuggestedSources";
+import type { DocumentUploadPayload } from "../utils/types";
+import { fileToDocumentUpload } from "../utils/file-upload";
 
 type ItemOption = {
   id: number;
@@ -18,7 +20,13 @@ type ItemOption = {
 type DocumentationModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onNext: (itemId: number, marketValue: number, valuationSource: string, acquisitionMethod: string) => void;
+  onNext: (
+    itemId: number,
+    marketValue: number,
+    valuationSource: string,
+    acquisitionMethod: string,
+    document?: DocumentUploadPayload
+  ) => void | Promise<void>;
   preSelectedItemId?: number | null;
   items?: ItemOption[];
 };
@@ -27,6 +35,7 @@ type UploadedFile = {
   name: string;
   date: string;
   preview: string | null;
+  file: File;
 };
 
 export default function DocumentationModal({
@@ -83,6 +92,7 @@ export default function DocumentationModal({
     reader.onload = (e) => {
       setUploadedFile({
         name: file.name,
+        file,
         date: new Date().toLocaleString("en-US", {
           day: "2-digit",
           month: "short",
@@ -168,10 +178,19 @@ export default function DocumentationModal({
           <Button
             appearance="primary"
             isDisabled={selectedItemId === ""}
-            onClick={() => {
-              if (selectedItemId !== "") {
-                onNext(selectedItemId, parseFloat(marketValue) || 0, valuationSource, acquisitionMethod);
+            onClick={async () => {
+              if (selectedItemId === "") return;
+              let document: DocumentUploadPayload | undefined;
+              if (uploadedFile?.file) {
+                document = await fileToDocumentUpload(uploadedFile.file);
               }
+              await onNext(
+                selectedItemId,
+                parseFloat(marketValue) || 0,
+                valuationSource,
+                acquisitionMethod,
+                document
+              );
             }}
           >
             Submit
