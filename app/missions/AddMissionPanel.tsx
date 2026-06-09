@@ -24,7 +24,6 @@ type FormValues = {
   doctor_name: string;
   doctor_email: string;
   doctor_phone: string;
-  team_members: string;
   budget: string;
 };
 
@@ -141,7 +140,6 @@ const { user } = useAuthUser();
         doctor_name: pendingValues.doctor_name || null,
         doctor_email: pendingValues.doctor_email || null,
         doctor_phone: pendingValues.doctor_phone || null,
-        team_members: pendingValues.team_members || null,
         budget: pendingValues.budget ? parseInt(pendingValues.budget) : null,
         status: "planned",
       });
@@ -311,12 +309,6 @@ const { user } = useAuthUser();
                       </Field>
                     </div>
 
-                    <div>
-                      <Label>Team Members</Label>
-                      <Field<string> name="team_members" defaultValue="">
-                        {({ fieldProps }) => <Textfield {...fieldProps} placeholder="e.g. Alice, Bob, Carol" />}
-                      </Field>
-                    </div>
 
                     <div>
                       <Label>Budget</Label>
@@ -334,31 +326,9 @@ const { user } = useAuthUser();
                       </Field>
                     </div>
 
-                    <div>
-                      <Label>Documents</Label>
-                      <label
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                          padding: "7px 14px",
-                          border: "2px solid #0052cc",
-                          borderRadius: 3,
-                          color: "#0052cc",
-                          fontSize: 14,
-                          fontWeight: 500,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="17 8 12 3 7 8" />
-                          <line x1="12" y1="3" x2="12" y2="15" />
-                        </svg>
-                        Upload
-                        <input type="file" style={{ display: "none" }} multiple />
-                      </label>
-                    </div>
+                    <p style={{ fontSize: 13, color: "#6b778c", margin: 0 }}>
+                      Documents can be added from the mission page once the mission has been created.
+                    </p>
                   </div>
 
                   <FormFooter>
