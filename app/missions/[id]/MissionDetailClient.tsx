@@ -5,8 +5,9 @@ import Link from "next/link";
 import AddMemberPanel from "./AddMemberPanel";
 import EditMemberPanel from "./EditMemberPanel";
 import EditMissionPanel from "./EditMissionPanel";
+import EditMissionItemPanel from "./EditMissionItemPanel";
 import AddDocumentPanel, { type DocumentEntry } from "./AddDocumentPanel";
-import { updateMissionItem, updateMissionItemBag, updateMissionItemStatus, deleteMissionMember } from "../actions";
+import { updateMissionItem, updateMissionItemBag, updateMissionItemStatus, deleteMissionMember, deleteMissionItem } from "../actions";
 import { useAuthUser } from "@/app/hooks/authUser";
 
 type InventoryItem = {
@@ -110,6 +111,7 @@ function formatDateRange(start?: string | null, end?: string | null) {
 // ─── Tabs ───────────────────────────────────────────────────────────────────
 
 function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boolean }) {
+  const [localItems, setLocalItems] = useState<MissionItem[]>(items);
   const [quantities, setQuantities] = useState<Record<number, number>>(
     Object.fromEntries(items.map((r) => [r.id, r.quantity_used ?? 0]))
   );
@@ -128,6 +130,7 @@ function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boo
     )
   );
   const [bagFilter, setBagFilter] = useState<number | null>(null);
+  const [editingItem, setEditingItem] = useState<MissionItem | null>(null);
   const [popupMessage, setPopupMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
   const { user } = useAuthUser();
@@ -137,8 +140,8 @@ function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boo
   ).sort((a, b) => a - b);
 
   const visibleItems = bagFilter === null
-    ? items
-    : items.filter((row) => bagAssignments[row.id] === bagFilter);
+    ? localItems
+    : localItems.filter((row) => bagAssignments[row.id] === bagFilter);
 
   const handleIncrement = async (id: number) => {
     const next = (quantities[id] ?? 0) + 1;
@@ -161,6 +164,20 @@ function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boo
 
   return (
     <>
+      <EditMissionItemPanel
+        isOpen={editingItem !== null}
+        item={editingItem}
+        isArchived={isArchived}
+        onClose={() => setEditingItem(null)}
+        onSaved={(updated) => {
+          setLocalItems((prev) => prev.map((r) => r.id === updated.id ? { ...r, ...updated } : r));
+          setQuantities((prev) => ({ ...prev, [updated.id]: updated.quantity_used }));
+          setBagAssignments((prev) => ({ ...prev, [updated.id]: updated.bag_number ?? "" }));
+          setItemStatuses((prev) => ({ ...prev, [updated.id]: updated.status ?? "" }));
+          setEditingItem(null);
+        }}
+      />
+
       {/* Bag filter chips */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-sm text-gray-500">Filter by bag:</span>
@@ -277,11 +294,23 @@ function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boo
                     >
                       +
                     </button>
-                    <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
+                    <button
+                      onClick={() => setEditingItem(row)}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100"
+                      title="Edit item"
+                    >
                       ✏️
                     </button>
-                    <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
-                      ···
+                    <button
+                      onClick={async () => {
+                        if (!confirm("Remove this item from the mission?")) return;
+                        await deleteMissionItem(row.id);
+                        setLocalItems((prev) => prev.filter((r) => r.id !== row.id));
+                      }}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-red-400 hover:bg-red-50"
+                      title="Remove item"
+                    >
+                      🗑
                     </button>
                   </div>
                 </td>
