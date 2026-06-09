@@ -102,12 +102,12 @@ export async function updateMission(
       .maybeSingle();
 
     if (leadDoctor) {
-      const contact = patch.doctor_email || patch.doctor_phone || undefined;
       await supabaseServer
         .from("mission_members")
         .update({
           ...(patch.doctor_name !== undefined && { name: patch.doctor_name }),
-          ...(contact !== undefined && { contact }),
+          ...(patch.doctor_email !== undefined && { contact: patch.doctor_email }),
+          ...(patch.doctor_phone !== undefined && { phone: patch.doctor_phone }),
         })
         .eq("id", leadDoctor.id);
     }
@@ -198,7 +198,7 @@ export async function addMissionItem(input: {
 export async function fetchMissionMembers(missionId: number) {
   const { data, error } = await supabaseServer
     .from("mission_members")
-    .select("id, name, contact, form_filled, role")
+    .select("id, name, contact, phone, form_filled, role")
     .eq("mission_id", missionId)
     .order("id", { ascending: true });
 
@@ -211,6 +211,7 @@ export async function addMissionMember(input: {
   mission_id: number;
   name: string;
   contact?: string | null;
+  phone?: string | null;
   form_filled?: boolean;
   role?: string | null;
 }) {
@@ -220,6 +221,7 @@ export async function addMissionMember(input: {
     mission_id: input.mission_id,
     name: input.name,
     contact: input.contact ?? null,
+    phone: input.phone ?? null,
     form_filled: input.form_filled ?? false,
     role: input.role ?? null,
   });
@@ -229,7 +231,7 @@ export async function addMissionMember(input: {
 /** Update a mission member */
 export async function updateMissionMember(
   id: number,
-  patch: Partial<{ name: string; contact: string; form_filled: boolean; role: string }>
+  patch: Partial<{ name: string; contact: string; phone: string; form_filled: boolean; role: string }>
 ) {
   await requireAdmin();
 

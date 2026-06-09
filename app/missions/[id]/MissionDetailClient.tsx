@@ -42,6 +42,7 @@ type MissionMember = {
   id: number;
   name?: string | null;
   contact?: string | null;
+  phone?: string | null;
   form_filled?: boolean | null;
   role?: string | null;
 };
@@ -373,6 +374,7 @@ function PeopleTab({
             <tr className="border-b border-gray-200 bg-white text-left text-gray-600">
               <th className="py-3 pr-4 font-medium">Name <span className="text-gray-400">⇅</span></th>
               <th className="py-3 pr-4 font-medium">Contact <span className="text-gray-400">⇅</span></th>
+              <th className="py-3 pr-4 font-medium">Phone <span className="text-gray-400">⇅</span></th>
               <th className="py-3 pr-4 font-medium">Form Filled <span className="text-gray-400">⇅</span></th>
               <th className="py-3 pr-4 font-medium">Role</th>
               <th className="py-3 font-medium">Actions</th>
@@ -383,6 +385,7 @@ function PeopleTab({
               <tr key={m.id} className="border-b border-gray-100 hover:bg-gray-50">
                 <td className="py-3 pr-4 text-gray-900">{m.name ?? "—"}</td>
                 <td className="py-3 pr-4 text-gray-600">{m.contact ?? "—"}</td>
+                <td className="py-3 pr-4 text-gray-600">{m.phone ?? "—"}</td>
                 <td className="py-3 pr-4">
                   <input type="checkbox" readOnly checked={m.form_filled ?? false} className="h-4 w-4" />
                 </td>
@@ -413,7 +416,7 @@ function PeopleTab({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-12 text-center text-gray-400">
+                <td colSpan={6} className="py-12 text-center text-gray-400">
                   {search ? "No members match your search" : "No people added to this mission yet"}
                 </td>
               </tr>

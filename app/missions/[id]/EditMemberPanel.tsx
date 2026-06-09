@@ -12,6 +12,7 @@ type Member = {
   id: number;
   name?: string | null;
   contact?: string | null;
+  phone?: string | null;
   form_filled?: boolean | null;
   role?: string | null;
 };
@@ -26,6 +27,7 @@ type Props = {
 type FormValues = {
   name: string;
   contact: string;
+  phone: string;
   role: string;
 };
 
@@ -73,6 +75,7 @@ export default function EditMemberPanel({ isOpen, member, onClose, onSaved }: Pr
       await updateMissionMember(member.id, {
         name: values.name.trim(),
         contact: values.contact.trim() || undefined,
+        phone: values.phone.trim() || undefined,
         role,
         form_filled: formFilled,
       });
@@ -80,6 +83,7 @@ export default function EditMemberPanel({ isOpen, member, onClose, onSaved }: Pr
         ...member,
         name: values.name.trim(),
         contact: values.contact.trim() || null,
+        phone: values.phone.trim() || null,
         role: role ?? null,
         form_filled: formFilled,
       });
@@ -116,7 +120,14 @@ export default function EditMemberPanel({ isOpen, member, onClose, onSaved }: Pr
               <div>
                 <PanelLabel>Contact</PanelLabel>
                 <Field<string> name="contact" defaultValue={member?.contact ?? ""}>
-                  {({ fieldProps }) => <Textfield {...fieldProps} placeholder="Phone or email" />}
+                  {({ fieldProps }) => <Textfield {...fieldProps} placeholder="Email" />}
+                </Field>
+              </div>
+
+              <div>
+                <PanelLabel>Phone</PanelLabel>
+                <Field<string> name="phone" defaultValue={member?.phone ?? ""}>
+                  {({ fieldProps }) => <Textfield {...fieldProps} type="tel" placeholder="555-555-5555" />}
                 </Field>
               </div>
 

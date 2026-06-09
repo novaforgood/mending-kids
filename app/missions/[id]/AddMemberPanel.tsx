@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "@atlaskit/button/new";
 import Form, { Field, FormFooter } from "@atlaskit/form";
 import Textfield from "@atlaskit/textfield";
@@ -18,6 +18,7 @@ type Props = {
 type FormValues = {
   name: string;
   contact: string;
+  phone: string;
   role: string;
 };
 
@@ -69,6 +70,7 @@ export default function AddMemberPanel({ isOpen, missionId, onClose, onAdded }: 
         mission_id: missionId,
         name: values.name.trim(),
         contact: values.contact.trim() || null,
+        phone: values.phone.trim() || null,
         role: values.role.trim() || null,
         form_filled: formFilled,
       });
@@ -113,7 +115,14 @@ export default function AddMemberPanel({ isOpen, missionId, onClose, onAdded }: 
               <div>
                 <PanelLabel>Contact</PanelLabel>
                 <Field<string> name="contact" defaultValue="">
-                  {({ fieldProps }) => <Textfield {...fieldProps} placeholder="Phone or email" />}
+                  {({ fieldProps }) => <Textfield {...fieldProps} placeholder="Email" />}
+                </Field>
+              </div>
+
+              <div>
+                <PanelLabel>Phone</PanelLabel>
+                <Field<string> name="phone" defaultValue="">
+                  {({ fieldProps }) => <Textfield {...fieldProps} type="tel" placeholder="555-555-5555" />}
                 </Field>
               </div>
 
