@@ -320,12 +320,6 @@ export default function MissionsPage() {
           >
             Create Mission
           </button>
-          <button
-            className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors text-lg leading-none"
-            title="More options"
-          >
-            ···
-          </button>
         </div>
       </div>
 
