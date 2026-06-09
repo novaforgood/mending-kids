@@ -43,6 +43,7 @@ const popupStyle = {
 type Props = {
   missionId: number;
   inventory: InventoryItem[];
+  existingInventoryIds: number[];
 };
 
 const CATEGORIES = ["ENT", "Medical", "Dental", "Surgical", "Educational", "Other"];
@@ -53,7 +54,7 @@ function formatDate(dateStr: string | null) {
   return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 }
 
-export default function AddItemsClient({ missionId, inventory }: Props) {
+export default function AddItemsClient({ missionId, inventory, existingInventoryIds }: Props) {
   const searchParams = useSearchParams();
   
   // Initialize selected state with pre-selected item from URL
@@ -156,6 +157,13 @@ export default function AddItemsClient({ missionId, inventory }: Props) {
             </Link>
           </div>
 
+          {/* Duplicate warning banner */}
+          {selectedItems.some((item) => existingInventoryIds.includes(item.id)) && (
+            <div className="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+              <strong>Note:</strong> One or more items below are already on this mission. They are marked with ⚠️. To increase their quantity, use the <strong>Edit</strong> (✏️) button on the mission items table instead.
+            </div>
+          )}
+
           {/* Confirmation table */}
           <div className="mb-8 overflow-x-auto">
             <table className="w-full border-collapse text-sm">
@@ -169,23 +177,32 @@ export default function AddItemsClient({ missionId, inventory }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {selectedItems.map((item) => (
-                  <tr key={item.id} className="border-b border-gray-100">
-                    <td className="py-3 pr-4 text-gray-900">{item.item_description ?? "—"}</td>
-                    <td className="py-3 pr-4 text-gray-600">{item.manufacturer ?? "—"}</td>
-                    <td className="py-3 pr-4 text-gray-600">{item.reference_number ?? "—"}</td>
-                    <td className="py-3 pr-4 text-gray-600">
-                      {item.quantity != null
-                        ? `${item.quantity}${item.unit_of_measure ? ` ${item.unit_of_measure}` : ""}`
-                        : "—"}
-                    </td>
-                    <td className="py-3">
-                      <span className="rounded bg-indigo-50 px-2 py-0.5 font-medium text-indigo-700">
-                        {selected[item.id]}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {selectedItems.map((item) => {
+                  const isDuplicate = existingInventoryIds.includes(item.id);
+                  return (
+                    <tr key={item.id} className={`border-b border-gray-100 ${isDuplicate ? "bg-yellow-50" : ""}`}>
+                      <td className="py-3 pr-4 text-gray-900">
+                        {isDuplicate && <span className="mr-1">⚠️</span>}
+                        {item.item_description ?? "—"}
+                        {isDuplicate && (
+                          <span className="ml-2 text-xs font-medium text-yellow-700">Already added</span>
+                        )}
+                      </td>
+                      <td className="py-3 pr-4 text-gray-600">{item.manufacturer ?? "—"}</td>
+                      <td className="py-3 pr-4 text-gray-600">{item.reference_number ?? "—"}</td>
+                      <td className="py-3 pr-4 text-gray-600">
+                        {item.quantity != null
+                          ? `${item.quantity}${item.unit_of_measure ? ` ${item.unit_of_measure}` : ""}`
+                          : "—"}
+                      </td>
+                      <td className="py-3">
+                        <span className={`rounded px-2 py-0.5 font-medium ${isDuplicate ? "bg-yellow-100 text-yellow-700" : "bg-indigo-50 text-indigo-700"}`}>
+                          {selected[item.id]}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

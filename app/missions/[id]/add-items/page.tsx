@@ -1,4 +1,4 @@
-import { fetchInventory } from "../../actions";
+import { fetchInventory, fetchMissionInventoryIds } from "../../actions";
 import AddItemsClient from "./AddItemsClient";
 
 export default async function AddItemsPage({
@@ -8,6 +8,9 @@ export default async function AddItemsPage({
 }) {
   const { id } = await params;
   const missionId = Number(id);
-  const inventory = await fetchInventory();
-  return <AddItemsClient missionId={missionId} inventory={inventory} />;
+  const [inventory, existingInventoryIds] = await Promise.all([
+    fetchInventory(),
+    fetchMissionInventoryIds(missionId),
+  ]);
+  return <AddItemsClient missionId={missionId} inventory={inventory} existingInventoryIds={existingInventoryIds} />;
 }

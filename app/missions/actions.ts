@@ -166,6 +166,16 @@ export async function fetchInventory() {
   return data ?? [];
 }
 
+/** Fetch just the inventory_ids already on a mission (used to detect duplicates) */
+export async function fetchMissionInventoryIds(missionId: number): Promise<number[]> {
+  const { data, error } = await supabaseServer
+    .from("mission_inventory")
+    .select("inventory_id")
+    .eq("mission_id", missionId);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => r.inventory_id);
+}
+
 /** 6) Add an item to a mission */
 export async function addMissionItem(input: {
   mission_id: number;
