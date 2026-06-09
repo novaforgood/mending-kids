@@ -212,13 +212,13 @@ export async function addMissionItem(input: {
     inventory_id: input.inventory_id,
     quantity_added: -input.quantity,
     notes: `Assigned to mission ${mission?.mission_name ?? input.mission_id}`,
-    added_by: "system",
+    added_by: actor.email ?? "unknown",
     date_added: new Date().toISOString().split("T")[0],
   });
 
   await supabaseServer.from("activity_log").insert({
     action_type: "assigned",
-    performed_by: "system",
+    performed_by: actor.email ?? "unknown",
     description: `Assigned ${input.quantity} unit(s) of "${inv.item_description}" to "${mission?.mission_name ?? `mission ${input.mission_id}`}"`,
     item_name: inv.item_description,
     quantity: input.quantity,
@@ -252,16 +252,21 @@ export async function addMissionMember(input: {
 }) {
   await requireAdmin();
 
-  const { error } = await supabaseServer.from("mission_members").insert({
-    mission_id: input.mission_id,
-    name: input.name,
-    contact: input.contact ?? null,
-    phone: input.phone ?? null,
-    form_filled: input.form_filled ?? false,
-    role: input.role ?? null,
-  });
+  const { data, error } = await supabaseServer
+    .from("mission_members")
+    .insert({
+      mission_id: input.mission_id,
+      name: input.name,
+      contact: input.contact ?? null,
+      phone: input.phone ?? null,
+      form_filled: input.form_filled ?? false,
+      role: input.role ?? null,
+    })
+    .select("id, name, contact, phone, form_filled, role")
+    .single();
 
   if (error) throw new Error(error.message);
+  return data;
 }
 /** Update a mission member */
 export async function updateMissionMember(
@@ -305,7 +310,7 @@ export async function updateMissionItem(id: number, quantity: number) {
     .single();
   if (invError) throw new Error(invError.message);
 
-  await requireAdmin();
+  const actor = await requireAdmin();
 
   const { error } = await supabaseServer
     .from("mission_inventory")
@@ -318,11 +323,11 @@ export async function updateMissionItem(id: number, quantity: number) {
     // Negative diff means quantity increased → take more units from inventory
     const diff = mi.quantity_used - quantity;
     const newInvQty = Math.max(0, (inv.quantity ?? 0) + diff);
-    await updateItemQuantity(mi.inventory_id, newInvQty, "system");
+    await updateItemQuantity(mi.inventory_id, newInvQty, actor.email ?? "unknown");
 
     await supabaseServer.from("activity_log").insert({
       action_type: "updated",
-      performed_by: "system",
+      performed_by: actor.email ?? "unknown",
       description: `Updated mission quantity from ${mi.quantity_used} to ${quantity} for "${inv.item_description}" — inventory adjusted by ${diff > 0 ? "+" : ""}${diff}`,
       item_name: inv.item_description,
       quantity: quantity,
@@ -381,7 +386,7 @@ export async function deleteMissionItem(id: number) {
     .single();
   if (invError) throw new Error(invError.message);
 
-  await requireAdmin();
+  const actor = await requireAdmin();
 
   const { error } = await supabaseServer
     .from("mission_inventory")
@@ -391,11 +396,11 @@ export async function deleteMissionItem(id: number) {
 
   // Restore the units back to inventory
   const restoredQty = (inv.quantity ?? 0) + mi.quantity_used;
-  await updateItemQuantity(mi.inventory_id, restoredQty, "system");
+  await updateItemQuantity(mi.inventory_id, restoredQty, actor.email ?? "unknown");
 
   await supabaseServer.from("activity_log").insert({
     action_type: "removed",
-    performed_by: "system",
+    performed_by: actor.email ?? "unknown",
     description: `Removed ${mi.quantity_used} unit(s) of "${inv.item_description}" from mission — inventory restored to ${restoredQty}`,
     item_name: inv.item_description,
     quantity: mi.quantity_used,

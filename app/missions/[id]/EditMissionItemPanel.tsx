@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Button from "@atlaskit/button/new";
 import SidePanel, { PanelLabel } from "@/components/SidePanel";
 import { updateMissionItem, updateMissionItemBag, updateMissionItemStatus } from "../actions";
+import { overlayStyle, popupStyle } from "../panelStyles";
 import { useAuthUser } from "@/app/hooks/authUser";
 
 type ItemStatus = "TO RETURN" | "RETURNED" | "USED";
@@ -28,20 +29,6 @@ type Props = {
   onSaved: (updated: Pick<MissionItem, "id" | "quantity_used" | "bag_number" | "status">) => void;
 };
 
-const overlayStyle = {
-  position: "fixed" as const,
-  top: 0, left: 0, width: "100%", height: "100%",
-  backgroundColor: "rgba(0,0,0,0.4)",
-  display: "flex", alignItems: "center", justifyContent: "center",
-  zIndex: 2000,
-};
-
-const popupStyle = {
-  backgroundColor: "white", color: "black",
-  padding: "20px", borderRadius: "8px",
-  boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
-  textAlign: "center" as const, minWidth: "300px",
-};
 
 const inputStyle: React.CSSProperties = {
   width: "100%",

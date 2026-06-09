@@ -8,6 +8,7 @@ import EditMissionPanel from "./EditMissionPanel";
 import EditMissionItemPanel from "./EditMissionItemPanel";
 import AddDocumentPanel, { type DocumentEntry } from "./AddDocumentPanel";
 import { updateMissionItem, updateMissionItemBag, updateMissionItemStatus, deleteMissionMember, deleteMissionItem } from "../actions";
+import { overlayStyle, popupStyle } from "../panelStyles";
 import { useAuthUser } from "@/app/hooks/authUser";
 
 type InventoryItem = {
@@ -75,27 +76,7 @@ function getCategoryAbbr(category: string) {
   return map[category] ?? category.slice(0, 3).toUpperCase();
 }
 
-const overlayStyle = {
-  position: "fixed" as const,
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
-  backgroundColor: "rgba(0, 0, 0, 0.4)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-};
 
-const popupStyle = {
-  backgroundColor: "white",
-  padding: "20px",
-  borderRadius: "8px",
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
-  textAlign: "center" as const,
-  minWidth: "300px",
-};
 
 function formatDateRange(start?: string | null, end?: string | null) {
   if (!start && !end) return null;
@@ -112,39 +93,27 @@ function formatDateRange(start?: string | null, end?: string | null) {
 
 function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boolean }) {
   const [localItems, setLocalItems] = useState<MissionItem[]>(items);
-  const [quantities, setQuantities] = useState<Record<number, number>>(
-    Object.fromEntries(items.map((r) => [r.id, r.quantity_used ?? 0]))
-  );
-  const [bagAssignments, setBagAssignments] = useState<Record<number, number | "">>(() =>
-    Object.fromEntries(
-      items
-        .filter((r) => r.bag_number != null)
-        .map((r) => [r.id, r.bag_number as number])
-    )
-  );
-  const [itemStatuses, setItemStatuses] = useState<Record<number, ItemStatus | "">>(() =>
-    Object.fromEntries(
-      items
-        .filter((r) => r.status != null)
-        .map((r) => [r.id, r.status as ItemStatus])
-    )
-  );
   const [bagFilter, setBagFilter] = useState<number | null>(null);
   const [editingItem, setEditingItem] = useState<MissionItem | null>(null);
   const [popupMessage, setPopupMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
   const { user } = useAuthUser();
 
+  const updateItem = (id: number, patch: Partial<MissionItem>) =>
+    setLocalItems((prev) => prev.map((r) => r.id === id ? { ...r, ...patch } : r));
+
   const assignedBags = Array.from(
-    new Set(Object.values(bagAssignments).filter((v): v is number => typeof v === "number"))
+    new Set(localItems.map((r) => r.bag_number).filter((b): b is number => b != null))
   ).sort((a, b) => a - b);
 
   const visibleItems = bagFilter === null
     ? localItems
-    : localItems.filter((row) => bagAssignments[row.id] === bagFilter);
+    : localItems.filter((row) => row.bag_number === bagFilter);
 
   const handleIncrement = async (id: number) => {
-    const next = (quantities[id] ?? 0) + 1;
+    const item = localItems.find((r) => r.id === id);
+    if (!item) return;
+    const next = (item.quantity_used ?? 0) + 1;
 
     if (user?.user_metadata?.role !== "admin") {
       setPopupMessage("You do not have permission to update items.");
@@ -152,13 +121,13 @@ function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boo
       return;
     }
 
-    setQuantities((prev) => ({ ...prev, [id]: next }));
+    updateItem(id, { quantity_used: next });
     try {
       await updateMissionItem(id, next);
     } catch (err: any) {
       setPopupMessage(err.message || "You do not have permission to update items.");
       setShowPopup(true);
-      setQuantities((prev) => ({ ...prev, [id]: next - 1 }));
+      updateItem(id, { quantity_used: next - 1 });
     }
   };
 
@@ -170,10 +139,7 @@ function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boo
         isArchived={isArchived}
         onClose={() => setEditingItem(null)}
         onSaved={(updated) => {
-          setLocalItems((prev) => prev.map((r) => r.id === updated.id ? { ...r, ...updated } : r));
-          setQuantities((prev) => ({ ...prev, [updated.id]: updated.quantity_used }));
-          setBagAssignments((prev) => ({ ...prev, [updated.id]: updated.bag_number ?? "" }));
-          setItemStatuses((prev) => ({ ...prev, [updated.id]: updated.status ?? "" }));
+          updateItem(updated.id, updated);
           setEditingItem(null);
         }}
       />
@@ -241,7 +207,7 @@ function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boo
                 </td>
                 <td className="py-3 pr-4">
                   <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-700">
-                    {quantities[row.id] ?? 0}
+                    {row.quantity_used ?? 0}
                   </span>
                 </td>
                 <td className="py-3 pr-4">
@@ -249,33 +215,32 @@ function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boo
                     type="number"
                     min={1}
                     placeholder="—"
-                    value={bagAssignments[row.id] ?? ""}
+                    value={row.bag_number ?? ""}
                     onChange={(e) => {
-                      const val = e.target.value === "" ? "" : parseInt(e.target.value);
-                      setBagAssignments((prev) => ({ ...prev, [row.id]: val as number | "" }));
-                    }}
-                    onBlur={(e) => {
                       const val = e.target.value === "" ? null : parseInt(e.target.value);
-                      updateMissionItemBag(row.id, val).catch(console.error);
+                      updateItem(row.id, { bag_number: val });
+                    }}
+                    onBlur={() => {
+                      updateMissionItemBag(row.id, row.bag_number ?? null).catch(console.error);
                     }}
                     className="w-16 rounded border border-gray-300 px-2 py-0.5 text-center text-sm text-gray-900 outline-none focus:border-indigo-500"
                   />
                 </td>
                 <td className="py-3 pr-4">
                   <select
-                    value={itemStatuses[row.id] ?? ""}
+                    value={row.status ?? ""}
                     disabled={!isArchived}
                     onChange={(e) => {
                       const val = e.target.value as ItemStatus | "";
-                      setItemStatuses((prev) => ({ ...prev, [row.id]: val }));
+                      updateItem(row.id, { status: val || null });
                       updateMissionItemStatus(row.id, val || null).catch(console.error);
                     }}
                     className={`rounded border px-2 py-0.5 text-xs font-medium outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
-                      itemStatuses[row.id] === "TO RETURN"
+                      row.status === "TO RETURN"
                         ? "border-red-300 bg-red-100 text-red-700"
-                        : itemStatuses[row.id] === "RETURNED"
+                        : row.status === "RETURNED"
                         ? "border-green-300 bg-green-100 text-green-700"
-                        : itemStatuses[row.id] === "USED"
+                        : row.status === "USED"
                         ? "border-yellow-300 bg-yellow-100 text-yellow-700"
                         : "border-gray-300 bg-white text-gray-500"
                     }`}
@@ -361,7 +326,10 @@ function PeopleTab({
         isOpen={drawerOpen}
         missionId={missionId}
         onClose={() => setDrawerOpen(false)}
-        onAdded={() => window.location.reload()}
+        onAdded={(newMember) => {
+          setLocalMembers((prev) => [...prev, newMember]);
+          setDrawerOpen(false);
+        }}
       />
       <EditMemberPanel
         isOpen={editingMember !== null}
@@ -581,21 +549,22 @@ type Tab = "items" | "people" | "documentation";
 export default function MissionDetailClient({ mission, items, members, documents }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("items");
   const [editMissionOpen, setEditMissionOpen] = useState(false);
+  const [localMission, setLocalMission] = useState(mission);
 
-  const dateRange = formatDateRange(mission.start_date, mission.end_date);
+  const dateRange = formatDateRange(localMission.start_date, localMission.end_date);
   const categoryColor =
-    CATEGORY_COLORS[mission.category ?? ""] ?? "bg-gray-100 text-gray-700";
-  const categoryAbbr = mission.category
-    ? getCategoryAbbr(mission.category)
+    CATEGORY_COLORS[localMission.category ?? ""] ?? "bg-gray-100 text-gray-700";
+  const categoryAbbr = localMission.category
+    ? getCategoryAbbr(localMission.category)
     : null;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <EditMissionPanel
         isOpen={editMissionOpen}
-        missionId={mission.id}
+        missionId={localMission.id}
         onClose={() => setEditMissionOpen(false)}
-        onSaved={() => window.location.reload()}
+        onSaved={(patch) => setLocalMission((prev) => ({ ...prev, ...patch }))}
       />
 
       <div className="mx-auto max-w-6xl rounded-xl bg-white p-6 shadow-sm">
@@ -642,7 +611,7 @@ export default function MissionDetailClient({ mission, items, members, documents
         <div className="mb-6">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900">
-              {mission.mission_name}
+              {localMission.mission_name}
             </h1>
             {categoryAbbr && (
               <span
@@ -662,13 +631,13 @@ export default function MissionDetailClient({ mission, items, members, documents
                 {dateRange}
               </span>
             )}
-            {mission.location && (
+            {localMission.location && (
               <span className="flex items-center gap-1">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                {mission.location}
+                {localMission.location}
               </span>
             )}
             <span className="text-gray-400">{items.length} items</span>

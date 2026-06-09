@@ -5,6 +5,7 @@ import Button from "@atlaskit/button/new";
 import Form, { Field, FormFooter } from "@atlaskit/form";
 import Textfield from "@atlaskit/textfield";
 import { addMission, addMissionItem, addMissionMember, fetchInventory } from "./actions";
+import { overlayStyle, popupStyle } from "./panelStyles";
 import { useAuthUser } from "@/app/hooks/authUser";
 
 type Props = {
@@ -27,27 +28,6 @@ type FormValues = {
   budget: string;
 };
 
-const overlayStyle = {
-  position: "fixed" as const,
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
-  backgroundColor: "rgba(0, 0, 0, 0.4)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-};
-
-const popupStyle = {
-  backgroundColor: "white",
-  padding: "20px",
-  borderRadius: "8px",
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
-  textAlign: "center" as const,
-  minWidth: "300px",
-};
 
 type InventoryItem = {
   id: number;
@@ -118,7 +98,7 @@ export default function AddMissionPanel({ isOpen, onClose, onCreated }: Props) {
   const [saving, setSaving] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
 const [showPopup, setShowPopup] = useState(false);
-const { user, loading } = useAuthUser();
+const { user } = useAuthUser();
 
   // Reset all state when drawer closes
   useEffect(() => {

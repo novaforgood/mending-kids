@@ -6,13 +6,23 @@ import Form, { Field, FormFooter } from "@atlaskit/form";
 import Textfield from "@atlaskit/textfield";
 import SidePanel, { PanelLabel } from "@/components/SidePanel";
 import { addMissionMember } from "../actions";
+import { overlayStyle, popupStyle } from "../panelStyles";
 import { useAuthUser } from "@/app/hooks/authUser";
+
+type NewMember = {
+  id: number;
+  name: string | null;
+  contact: string | null;
+  phone: string | null;
+  form_filled: boolean | null;
+  role: string | null;
+};
 
 type Props = {
   isOpen: boolean;
   missionId: number;
   onClose: () => void;
-  onAdded: () => void;
+  onAdded: (member: NewMember) => void;
 };
 
 type FormValues = {
@@ -22,35 +32,12 @@ type FormValues = {
   role: string;
 };
 
-const overlayStyle = {
-  position: "fixed" as const,
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
-  backgroundColor: "rgba(0,0,0,0.4)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-};
-
-const popupStyle = {
-  backgroundColor: "white",
-  color: "black",
-  padding: "20px",
-  borderRadius: "8px",
-  boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
-  textAlign: "center" as const,
-  minWidth: "300px",
-};
-
 export default function AddMemberPanel({ isOpen, missionId, onClose, onAdded }: Props) {
   const [formFilled, setFormFilled] = useState(false);
   const [saving, setSaving] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
-  const { user, loading } = useAuthUser();
+  const { user } = useAuthUser();
 
   useEffect(() => {
     if (!isOpen) setFormFilled(false);
@@ -66,7 +53,7 @@ export default function AddMemberPanel({ isOpen, missionId, onClose, onAdded }: 
 }
 
     try {
-      await addMissionMember({
+      const newMember = await addMissionMember({
         mission_id: missionId,
         name: values.name.trim(),
         contact: values.contact.trim() || null,
@@ -74,7 +61,7 @@ export default function AddMemberPanel({ isOpen, missionId, onClose, onAdded }: 
         role: values.role.trim() || null,
         form_filled: formFilled,
       });
-      onAdded();
+      onAdded(newMember);
       onClose();
     } catch (err: any) {
   setPopupMessage(err.message || "You do not have permission to add members.");

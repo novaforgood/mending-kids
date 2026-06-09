@@ -6,6 +6,7 @@ import Textfield from "@atlaskit/textfield";
 import Button from "@atlaskit/button/new";
 import SidePanel, { PanelLabel } from "@/components/SidePanel";
 import { fetchMissionFull, updateMission } from "../actions";
+import { overlayStyle, popupStyle } from "../panelStyles";
 import { useAuthUser } from "@/app/hooks/authUser";
 
 const CATEGORIES = ["ENT", "Medical", "Dental", "Surgical", "Educational", "Other"];
@@ -26,11 +27,19 @@ const selectStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
+type MissionPatch = {
+  mission_name: string;
+  start_date?: string;
+  end_date?: string;
+  category?: string;
+  location?: string;
+};
+
 type Props = {
   isOpen: boolean;
   missionId: number;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (patch: MissionPatch) => void;
 };
 
 type FormValues = {
@@ -47,27 +56,6 @@ type FormValues = {
   budget: string;
 };
 
-const overlayStyle = {
-  position: "fixed" as const,
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
-  backgroundColor: "rgba(0, 0, 0, 0.4)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-};
-
-const popupStyle = {
-  backgroundColor: "white",
-  padding: "20px",
-  borderRadius: "8px",
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
-  textAlign: "center" as const,
-  minWidth: "300px",
-};
 
 export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }: Props) {
   const [defaults, setDefaults] = useState<Partial<FormValues>>({});
@@ -103,9 +91,10 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
   const handleSubmit = async (values: FormValues) => {
     setSaving(true);
     if (user.user_metadata.role != "admin") {
-        setPopupMessage("You do not have permission to edit this.");
-        setShowPopup(true);
-        return;
+      setPopupMessage("You do not have permission to edit this.");
+      setShowPopup(true);
+      setSaving(false);
+      return;
     }
     try {
       await updateMission(missionId, {
@@ -117,14 +106,20 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
         doctor_name: values.doctor_name || undefined,
         doctor_email: values.doctor_email || undefined,
         doctor_phone: values.doctor_phone || undefined,
-        team_members: values.team_members || undefined,
         budget: values.budget ? parseFloat(values.budget) : undefined,
       });
-      onSaved();
+      onSaved({
+        mission_name: values.mission_name,
+        start_date: values.start_date || undefined,
+        end_date: values.end_date || undefined,
+        category: values.category || undefined,
+        location: values.location || undefined,
+      });
       onClose();
     } catch (err: any) {
-
-} finally {
+      setPopupMessage(err.message || "Failed to save changes.");
+      setShowPopup(true);
+    } finally {
       setSaving(false);
     }
   };
