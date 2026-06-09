@@ -188,8 +188,33 @@ export async function addMissionItem(input: {
     .single();
   if (fetchError) throw new Error(fetchError.message);
 
+  const { data: mission, error: missionError } = await supabaseServer
+    .from("missions")
+    .select("mission_name")
+    .eq("id", input.mission_id)
+    .single();
+  if (missionError) throw new Error(missionError.message);
+
   const newQty = Math.max(0, (inv.quantity ?? 0) - input.quantity);
   await updateItemQuantity(input.inventory_id, newQty, "system");
+
+  await supabaseServer.from("inventory_entries").insert({
+    inventory_id: input.inventory_id,
+    quantity_added: -input.quantity,
+    notes: `Assigned to mission ${mission?.mission_name ?? input.mission_id}`,
+    added_by: "system",
+    date_added: new Date().toISOString().split("T")[0],
+  });
+
+  await supabaseServer.from("activity_log").insert({
+    action_type: "assigned",
+    performed_by: "system",
+    description: `Assigned ${input.quantity} unit(s) of "${inv.item_description}" to "${mission?.mission_name ?? `mission ${input.mission_id}`}"`,
+    item_name: inv.item_description,
+    quantity: input.quantity,
+    inventory_id: input.inventory_id,
+    mission_id: input.mission_id,
+  });
 }
 
 // ─── Mission Members ────────────────────────────────────────────────────────
@@ -278,15 +303,18 @@ export async function updateMissionItem(id: number, quantity: number) {
     .eq("id", id);
   if (error) throw new Error(error.message);
 
-  await supabaseServer.from("activity_log").insert({
-    action_type: "updated",
-    performed_by: "system",
-    description: `Updated quantity from ${mi.quantity_used} to ${quantity} for "${inv.item_description}" on mission`,
-    item_name: inv.item_description,
-    quantity: quantity,
-    mission_id: mi.mission_id,
-    inventory_id: mi.inventory_id,
-  });
+  // Only log mission inventory updates when the quantity actually changed
+  if (mi.quantity_used !== quantity) {
+    await supabaseServer.from("activity_log").insert({
+      action_type: "updated",
+      performed_by: "system",
+      description: `Updated quantity from ${mi.quantity_used} to ${quantity} for "${inv.item_description}" on mission`,
+      item_name: inv.item_description,
+      quantity: quantity,
+      mission_id: mi.mission_id,
+      inventory_id: mi.inventory_id,
+    });
+  }
 }
 
 /** Update status for a mission inventory item */

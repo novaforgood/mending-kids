@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DynamicTable from "@atlaskit/dynamic-table";
 
 type HeadCell = {
@@ -14,15 +14,13 @@ type RowCell = {
   content: React.ReactNode;
 };
 
-type Row<T = any> = {
+type Row<T = unknown> = {
   key: string;
   cells: RowCell[];
-
-  /* original item */
   item: T;
 };
 
-type Props<T = any> = {
+type Props<T = unknown> = {
   head: {
     cells: HeadCell[];
   };
@@ -30,11 +28,11 @@ type Props<T = any> = {
   rows: Row<T>[];
 
   sortKey?: string;
-  sortOrder?: "ASC" | "DESC";
+  sortOrder?: "ASC" | "DESC" | undefined;
 
   onSort?: (args: {
     key: string;
-    sortOrder: "ASC" | "DESC";
+    sortOrder?: "ASC" | "DESC";
   }) => void;
 
   rowsPerPage?: number;
@@ -52,6 +50,7 @@ type Props<T = any> = {
 
   /* CLICK */
   onRowClick?: (item: T) => void;
+  clearSelectionTrigger?: number;
 };
 
 export default function CustomDynamicTable<T>({
@@ -79,8 +78,16 @@ export default function CustomDynamicTable<T>({
   textColor = "#172B4D",
 
   onRowClick,
+  clearSelectionTrigger,
 }: Props<T>) {
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (clearSelectionTrigger !== undefined) {
+      // defer clearing selection to avoid synchronous setState inside effect
+      setTimeout(() => setSelectedRowKey(null), 0);
+    }
+  }, [clearSelectionTrigger]);
 
   const styledHead = {
     cells: head.cells.map((cell) => ({
@@ -139,17 +146,41 @@ export default function CustomDynamicTable<T>({
 
   return (
     <div className="custom-dynamic-table-wrapper">
-      <style jsx global>{`
-        .custom-dynamic-table-wrapper table {
-          border-collapse: collapse;
-          width: 100%;
-        }
+    <style jsx global>{`
+    .custom-dynamic-table-wrapper table {
+        border-collapse: collapse;
+        width: 100%;
+    }
 
-        .custom-dynamic-table-wrapper tbody tr:hover {
-          background: ${hoverRowColor} !important;
-        }
-      `}</style>
+    .custom-dynamic-table-wrapper tbody tr:hover {
+        background: ${hoverRowColor} !important;
+    }
 
+    /* Pagination buttons */
+    .custom-dynamic-table-wrapper nav button {
+        color: #422670 !important;
+        border-radius: 6px !important;
+    }
+
+    /* Hover state */
+    .custom-dynamic-table-wrapper nav button:hover {
+        background: #F0EBFF !important;
+    }
+
+    /* Selected page button */
+    .custom-dynamic-table-wrapper nav button[aria-current="page"] {
+        background: #EAE6FF !important;
+        color: #422670 !important;
+        // border: 2px solid #422670 !important;
+
+    }
+
+    /* Selected page text */
+    .custom-dynamic-table-wrapper nav button[aria-current="page"] * {
+        color: #422670 !important;
+    }
+    `}</style>
+    
       <DynamicTable
         head={styledHead}
         rows={styledRows}

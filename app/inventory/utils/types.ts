@@ -14,7 +14,7 @@ export type InventoryItem = {
   initial_quantity?: number | null;
   status: string;
   mission: string;
-  expiration: Date;
+  expiration: Date | null;
   mission_inventory?: {
     mission_id: number;
     quantity_used: number | null;
@@ -89,7 +89,7 @@ export type InventoryPayload = {
   quantity: number;
   status: string;
   mission: string;
-  expiration: Date;
+  expiration: Date | null;
   market_value_per_unit: number;
   valuation_source: string;
   acquisition_method: string;
