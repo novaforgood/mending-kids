@@ -69,17 +69,18 @@ export default function EditMemberPanel({ isOpen, member, onClose, onSaved }: Pr
       return;
     }
     try {
+      const role = member.role === "Lead Doctor" ? "Lead Doctor" : (values.role.trim() || undefined);
       await updateMissionMember(member.id, {
         name: values.name.trim(),
         contact: values.contact.trim() || undefined,
-        role: values.role.trim() || undefined,
+        role,
         form_filled: formFilled,
       });
       onSaved({
         ...member,
         name: values.name.trim(),
         contact: values.contact.trim() || null,
-        role: values.role.trim() || null,
+        role: role ?? null,
         form_filled: formFilled,
       });
       onClose();
@@ -121,11 +122,17 @@ export default function EditMemberPanel({ isOpen, member, onClose, onSaved }: Pr
 
               <div>
                 <PanelLabel>Role</PanelLabel>
-                <Field<string> name="role" defaultValue={member?.role ?? ""}>
-                  {({ fieldProps }) => (
-                    <Textfield {...fieldProps} placeholder="e.g. Volunteer, Medical Doctor" />
-                  )}
-                </Field>
+                {member?.role === "Lead Doctor" ? (
+                  <div style={{ padding: "8px 10px", border: "2px solid #dfe1e6", borderRadius: 3, fontSize: 14, color: "#6b778c", backgroundColor: "#f4f5f7", cursor: "not-allowed" }}>
+                    Lead Doctor
+                  </div>
+                ) : (
+                  <Field<string> name="role" defaultValue={member?.role ?? ""}>
+                    {({ fieldProps }) => (
+                      <Textfield {...fieldProps} placeholder="e.g. Volunteer, Medical Doctor" />
+                    )}
+                  </Field>
+                )}
               </div>
 
               <div>

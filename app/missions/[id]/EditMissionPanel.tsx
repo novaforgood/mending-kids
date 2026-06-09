@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useReducer, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Form, { Field, FormFooter } from "@atlaskit/form";
 import Textfield from "@atlaskit/textfield";
 import Button from "@atlaskit/button/new";
@@ -75,7 +75,7 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
   const [formKey, setFormKey] = useState(0); // force re-mount when data loads
   const [popupMessage, setPopupMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
-  const { user, loading } = useAuthUser();
+  const { user } = useAuthUser();
 
   // Fetch full mission data when drawer opens
   useEffect(() => {
@@ -114,7 +114,11 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
         end_date: values.end_date || undefined,
         category: values.category || undefined,
         location: values.location || undefined,
-        status: undefined,
+        doctor_name: values.doctor_name || undefined,
+        doctor_email: values.doctor_email || undefined,
+        doctor_phone: values.doctor_phone || undefined,
+        team_members: values.team_members || undefined,
+        budget: values.budget ? parseFloat(values.budget) : undefined,
       });
       onSaved();
       onClose();
@@ -251,15 +255,7 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
                 </Field>
               </div>
 
-              {/* Team Members */}
-              <div>
-                <PanelLabel>Team Members</PanelLabel>
-                <Field<string> name="team_members" defaultValue={defaults.team_members ?? ""}>
-                  {({ fieldProps }) => (
-                    <Textfield {...fieldProps} placeholder="e.g. Alice, Bob, Carol" />
-                  )}
-                </Field>
-              </div>
+
 
               {/* Budget */}
               <div>

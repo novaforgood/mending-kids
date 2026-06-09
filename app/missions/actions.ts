@@ -76,17 +76,42 @@ export async function updateMission(
     location: string;
     category: string;
     status: string;
-  }> 
-  
+    doctor_name: string;
+    doctor_email: string;
+    doctor_phone: string;
+    team_members: string;
+    budget: number;
+  }>
 ) {
   await requireAdmin();
 
   const { error } = await supabaseServer
     .from("missions")
-    .update(patch)  
+    .update(patch)
     .eq("id", id);
 
   if (error) throw new Error(error.message);
+
+  // Keep the Lead Doctor member row in sync with the doctor fields
+  if (patch.doctor_name !== undefined || patch.doctor_email !== undefined || patch.doctor_phone !== undefined) {
+    const { data: leadDoctor } = await supabaseServer
+      .from("mission_members")
+      .select("id")
+      .eq("mission_id", id)
+      .eq("role", "Lead Doctor")
+      .maybeSingle();
+
+    if (leadDoctor) {
+      const contact = patch.doctor_email || patch.doctor_phone || undefined;
+      await supabaseServer
+        .from("mission_members")
+        .update({
+          ...(patch.doctor_name !== undefined && { name: patch.doctor_name }),
+          ...(contact !== undefined && { contact }),
+        })
+        .eq("id", leadDoctor.id);
+    }
+  }
 }
 
 /** Fetch all editable fields for a single mission (used by Edit Mission panel) */
