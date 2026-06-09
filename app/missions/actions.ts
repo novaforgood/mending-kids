@@ -182,7 +182,7 @@ export async function addMissionItem(input: {
   inventory_id: number;
   quantity: number;
 }) {
-  await requireAdmin();
+  const actor = await requireAdmin();
 
   const { error: insertError } = await supabaseServer.from("mission_inventory").insert({
     mission_id: input.mission_id,
@@ -300,7 +300,7 @@ export async function updateMissionItem(id: number, quantity: number) {
 
   const { data: inv, error: invError } = await supabaseServer
     .from("inventory")
-    .select("item_description")
+    .select("item_description, quantity")
     .eq("id", mi.inventory_id)
     .single();
   if (invError) throw new Error(invError.message);
@@ -313,12 +313,17 @@ export async function updateMissionItem(id: number, quantity: number) {
     .eq("id", id);
   if (error) throw new Error(error.message);
 
-  // Only log mission inventory updates when the quantity actually changed
   if (mi.quantity_used !== quantity) {
+    // Positive diff means quantity decreased → return units to inventory
+    // Negative diff means quantity increased → take more units from inventory
+    const diff = mi.quantity_used - quantity;
+    const newInvQty = Math.max(0, (inv.quantity ?? 0) + diff);
+    await updateItemQuantity(mi.inventory_id, newInvQty, "system");
+
     await supabaseServer.from("activity_log").insert({
       action_type: "updated",
       performed_by: "system",
-      description: `Updated quantity from ${mi.quantity_used} to ${quantity} for "${inv.item_description}" on mission`,
+      description: `Updated mission quantity from ${mi.quantity_used} to ${quantity} for "${inv.item_description}" — inventory adjusted by ${diff > 0 ? "+" : ""}${diff}`,
       item_name: inv.item_description,
       quantity: quantity,
       mission_id: mi.mission_id,
@@ -371,24 +376,27 @@ export async function deleteMissionItem(id: number) {
 
   const { data: inv, error: invError } = await supabaseServer
     .from("inventory")
-    .select("item_description")
+    .select("item_description, quantity")
     .eq("id", mi.inventory_id)
     .single();
   if (invError) throw new Error(invError.message);
 
   await requireAdmin();
 
-  const {error} = await supabaseServer
+  const { error } = await supabaseServer
     .from("mission_inventory")
     .delete()
     .eq("id", id);
-
   if (error) throw new Error(error.message);
+
+  // Restore the units back to inventory
+  const restoredQty = (inv.quantity ?? 0) + mi.quantity_used;
+  await updateItemQuantity(mi.inventory_id, restoredQty, "system");
 
   await supabaseServer.from("activity_log").insert({
     action_type: "removed",
     performed_by: "system",
-    description: `Removed ${mi.quantity_used} unit(s) of "${inv.item_description}" from mission`,
+    description: `Removed ${mi.quantity_used} unit(s) of "${inv.item_description}" from mission — inventory restored to ${restoredQty}`,
     item_name: inv.item_description,
     quantity: mi.quantity_used,
     mission_id: mi.mission_id,
