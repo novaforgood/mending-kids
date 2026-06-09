@@ -108,7 +108,7 @@ export async function fetchMissionDetail(missionId: number) {
   // 1) Mission header
   const { data: mission, error: missionError } = await supabaseServer
     .from("missions")
-    .select("id, mission_name, start_date, end_date, location, category, status, created_at")
+    .select("id, mission_name, start_date, end_date, location, category, status, created_at, documents")
     .eq("id", missionId)
     .single();
 

@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import AddMemberPanel from "./AddMemberPanel";
+import EditMemberPanel from "./EditMemberPanel";
 import EditMissionPanel from "./EditMissionPanel";
+import AddDocumentPanel, { type DocumentEntry } from "./AddDocumentPanel";
 import { updateMissionItem, updateMissionItemBag, updateMissionItemStatus } from "../actions";
 import { useAuthUser } from "@/app/hooks/authUser";
 
@@ -48,6 +50,7 @@ type Props = {
   mission: Mission;
   items: MissionItem[];
   members: MissionMember[];
+  documents: DocumentEntry[];
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -315,8 +318,10 @@ function PeopleTab({
 }) {
   const [search, setSearch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [localMembers, setLocalMembers] = useState<MissionMember[]>(members);
+  const [editingMember, setEditingMember] = useState<MissionMember | null>(null);
 
-  const filtered = members.filter((m) =>
+  const filtered = localMembers.filter((m) =>
     (m.name ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
@@ -327,6 +332,15 @@ function PeopleTab({
         missionId={missionId}
         onClose={() => setDrawerOpen(false)}
         onAdded={() => window.location.reload()}
+      />
+      <EditMemberPanel
+        isOpen={editingMember !== null}
+        member={editingMember}
+        onClose={() => setEditingMember(null)}
+        onSaved={(updated) => {
+          setLocalMembers((prev) => prev.map((m) => m.id === updated.id ? updated : m));
+          setEditingMember(null);
+        }}
       />
 
       {/* Toolbar */}
@@ -381,7 +395,7 @@ function PeopleTab({
                 </td>
                 <td className="py-3">
                   <div className="flex items-center gap-2">
-                    <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">✏️</button>
+                    <button onClick={() => setEditingMember(m)} className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">✏️</button>
                     <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">···</button>
                   </div>
                 </td>
@@ -401,47 +415,116 @@ function PeopleTab({
   );
 }
 
-function DocumentationTab() {
+function DocumentationTab({ missionId, initialDocs }: { missionId: number; initialDocs: DocumentEntry[] }) {
+  const [docs, setDocs] = useState<DocumentEntry[]>(initialDocs);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(docId: string) {
+    if (!confirm("Remove this document?")) return;
+    setDeletingId(docId);
+    try {
+      const res = await fetch(`/api/missions/${missionId}/documents`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ docId }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error ?? "Delete failed");
+      }
+      setDocs((prev) => prev.filter((d) => d.id !== docId));
+    } catch (err: any) {
+      alert(err.message || "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  const filtered = docs.filter((d) =>
+    d.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  function formatDate(iso: string) {
+    const d = new Date(iso);
+    return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+  }
+
   return (
     <div>
+      <AddDocumentPanel
+        isOpen={drawerOpen}
+        missionId={missionId}
+        onClose={() => setDrawerOpen(false)}
+        onAdded={(doc) => { setDocs((prev) => [...prev, doc]); setDrawerOpen(false); }}
+      />
+
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-500">
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input className="outline-none" placeholder="Search" />
-          </div>
-          <button className="flex h-8 w-8 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
-            ≡
-          </button>
+        <div className="flex items-center gap-2 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-500">
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input className="outline-none" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <button className="flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+        <button
+          onClick={() => setDrawerOpen(true)}
+          className="flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
           + Add Document
         </button>
       </div>
+
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-white text-left text-gray-600">
-              <th className="py-3 pr-4 font-medium">
-                Name <span className="text-gray-400">⇅</span>
-              </th>
-              <th className="py-3 pr-4 font-medium">
-                Upload Date <span className="text-gray-400">⇅</span>
-              </th>
-              <th className="py-3 pr-4 font-medium">
-                Uploaded by <span className="text-gray-400">⇅</span>
-              </th>
+              <th className="py-3 pr-4 font-medium">Name <span className="text-gray-400">⇅</span></th>
+              <th className="py-3 pr-4 font-medium">Type</th>
+              <th className="py-3 pr-4 font-medium">Upload Date <span className="text-gray-400">⇅</span></th>
+              <th className="py-3 pr-4 font-medium">Uploaded by <span className="text-gray-400">⇅</span></th>
               <th className="py-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td colSpan={4} className="py-12 text-center text-gray-400">
-                No documents added to this mission yet
-              </td>
-            </tr>
+            {filtered.map((doc) => (
+              <tr key={doc.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="py-3 pr-4 text-gray-900">
+                  {doc.url ? (
+                    <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                      {doc.name}
+                    </a>
+                  ) : doc.name}
+                </td>
+                <td className="py-3 pr-4 text-gray-600">{doc.type}</td>
+                <td className="py-3 pr-4 text-gray-600">{formatDate(doc.created_at)}</td>
+                <td className="py-3 pr-4 text-gray-600">{doc.uploaded_by}</td>
+                <td className="py-3">
+                  <div className="flex items-center gap-2">
+                    {doc.url && (
+                      <a href={doc.url} download={doc.name} className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100" title="Download">
+                        ↓
+                      </a>
+                    )}
+                    <button
+                      onClick={() => handleDelete(doc.id)}
+                      disabled={deletingId === doc.id}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-red-400 hover:bg-red-50 disabled:opacity-40"
+                      title="Remove"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-12 text-center text-gray-400">
+                  {search ? "No documents match your search" : "No documents added to this mission yet"}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -453,7 +536,7 @@ function DocumentationTab() {
 
 type Tab = "items" | "people" | "documentation";
 
-export default function MissionDetailClient({ mission, items, members }: Props) {
+export default function MissionDetailClient({ mission, items, members, documents }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("items");
   const [editMissionOpen, setEditMissionOpen] = useState(false);
 
@@ -580,7 +663,7 @@ export default function MissionDetailClient({ mission, items, members }: Props) 
           />
         )}
         {activeTab === "people" && <PeopleTab members={members} missionId={mission.id} />}
-        {activeTab === "documentation" && <DocumentationTab />}
+        {activeTab === "documentation" && <DocumentationTab missionId={mission.id} initialDocs={documents} />}
       </div>
     </div>
   );

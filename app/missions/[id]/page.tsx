@@ -24,6 +24,7 @@ export default async function MissionDetailPage({
       mission={mission}
       items={items as any}
       members={members}
+      documents={(mission as any).documents ?? []}
     />
   );
 }
