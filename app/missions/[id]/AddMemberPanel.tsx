@@ -45,13 +45,12 @@ export default function AddMemberPanel({ isOpen, missionId, onClose, onAdded }: 
 
   const handleSubmit = async (values: FormValues) => {
     setSaving(true);
- if (user?.user_metadata?.role !== "admin") {
-  setPopupMessage("You do not have permission to add members.");
-  setShowPopup(true);
-  setSaving(false);
-  return;
-}
-
+    if (user?.user_metadata?.role !== "admin") {
+      setPopupMessage("You do not have permission to add members.");
+      setShowPopup(true);
+      setSaving(false);
+      return;
+    }
     try {
       const newMember = await addMissionMember({
         mission_id: missionId,
@@ -63,12 +62,12 @@ export default function AddMemberPanel({ isOpen, missionId, onClose, onAdded }: 
       });
       onAdded(newMember);
       onClose();
-    } catch (err: any) {
-  setPopupMessage(err.message || "You do not have permission to add members.");
-  setShowPopup(true);
-} finally {
-  setSaving(false);
-}
+    } catch (err: unknown) {
+      setPopupMessage(err instanceof Error ? err.message : "You do not have permission to add members.");
+      setShowPopup(true);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -149,15 +148,14 @@ export default function AddMemberPanel({ isOpen, missionId, onClose, onAdded }: 
         )}
       </Form>
 
-
       {showPopup && (
-  <div style={overlayStyle}>
-    <div style={popupStyle}>
-      <p>{popupMessage}</p>
-      <button onClick={() => setShowPopup(false)}>OK</button>
-    </div>
-  </div>
-)}
+        <div style={overlayStyle}>
+          <div style={popupStyle}>
+            <p>{popupMessage}</p>
+            <button onClick={() => setShowPopup(false)}>OK</button>
+          </div>
+        </div>
+      )}
     </SidePanel>
   );
 }

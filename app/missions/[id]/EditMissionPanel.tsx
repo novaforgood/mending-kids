@@ -56,7 +56,6 @@ type FormValues = {
   budget: string;
 };
 
-
 export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }: Props) {
   const [defaults, setDefaults] = useState<Partial<FormValues>>({});
   const [saving, setSaving] = useState(false);
@@ -90,7 +89,7 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
 
   const handleSubmit = async (values: FormValues) => {
     setSaving(true);
-    if (user.user_metadata.role != "admin") {
+    if (user?.user_metadata?.role !== "admin") {
       setPopupMessage("You do not have permission to edit this.");
       setShowPopup(true);
       setSaving(false);
@@ -116,8 +115,8 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
         location: values.location || undefined,
       });
       onClose();
-    } catch (err: any) {
-      setPopupMessage(err.message || "Failed to save changes.");
+    } catch (err: unknown) {
+      setPopupMessage(err instanceof Error ? err.message : "Failed to save changes.");
       setShowPopup(true);
     } finally {
       setSaving(false);
@@ -131,7 +130,6 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
       label="Edit Mission"
       title="Edit Mission"
       subtitle="* indicates a required field"
-      // Footer is handled inside the Form so we suppress the default one
       footerLeft={<span />}
       footerRight={<span />}
     >
@@ -250,8 +248,6 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
                 </Field>
               </div>
 
-
-
               {/* Budget */}
               <div>
                 <PanelLabel>Budget</PanelLabel>
@@ -297,14 +293,13 @@ export default function EditMissionPanel({ isOpen, missionId, onClose, onSaved }
       </Form>
 
       {showPopup && (
-  <div style={overlayStyle}>
-    <div style={popupStyle}>
-      <p>{popupMessage}</p>
-      <button onClick={() => setShowPopup(false)}>OK</button>
-    </div>
-  </div>
-)}
-
+        <div style={overlayStyle}>
+          <div style={popupStyle}>
+            <p>{popupMessage}</p>
+            <button onClick={() => setShowPopup(false)}>OK</button>
+          </div>
+        </div>
+      )}
     </SidePanel>
   );
 }
