@@ -6,7 +6,7 @@ import AddMemberPanel from "./AddMemberPanel";
 import EditMemberPanel from "./EditMemberPanel";
 import EditMissionPanel from "./EditMissionPanel";
 import AddDocumentPanel, { type DocumentEntry } from "./AddDocumentPanel";
-import { updateMissionItem, updateMissionItemBag, updateMissionItemStatus } from "../actions";
+import { updateMissionItem, updateMissionItemBag, updateMissionItemStatus, deleteMissionMember } from "../actions";
 import { useAuthUser } from "@/app/hooks/authUser";
 
 type InventoryItem = {
@@ -396,7 +396,17 @@ function PeopleTab({
                 <td className="py-3">
                   <div className="flex items-center gap-2">
                     <button onClick={() => setEditingMember(m)} className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">✏️</button>
-                    <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">···</button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Remove ${m.name ?? "this member"}?`)) return;
+                        await deleteMissionMember(m.id);
+                        setLocalMembers((prev) => prev.filter((x) => x.id !== m.id));
+                      }}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-red-400 hover:bg-red-50"
+                      title="Delete member"
+                    >
+                      🗑
+                    </button>
                   </div>
                 </td>
               </tr>
