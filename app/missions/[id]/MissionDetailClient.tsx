@@ -3,8 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import AddMemberPanel from "./AddMemberPanel";
+import EditMemberPanel from "./EditMemberPanel";
 import EditMissionPanel from "./EditMissionPanel";
-import { updateMissionItem, updateMissionItemBag, updateMissionItemStatus } from "../actions";
+import EditMissionItemPanel from "./EditMissionItemPanel";
+import AddDocumentPanel, { type DocumentEntry } from "./AddDocumentPanel";
+import { updateMissionItem, updateMissionItemBag, updateMissionItemStatus, deleteMissionMember, deleteMissionItem } from "../actions";
+import { overlayStyle, popupStyle } from "../panelStyles";
 import { useAuthUser } from "@/app/hooks/authUser";
 
 type InventoryItem = {
@@ -40,6 +44,7 @@ type MissionMember = {
   id: number;
   name?: string | null;
   contact?: string | null;
+  phone?: string | null;
   form_filled?: boolean | null;
   role?: string | null;
 };
@@ -48,6 +53,7 @@ type Props = {
   mission: Mission;
   items: MissionItem[];
   members: MissionMember[];
+  documents: DocumentEntry[];
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -70,27 +76,7 @@ function getCategoryAbbr(category: string) {
   return map[category] ?? category.slice(0, 3).toUpperCase();
 }
 
-const overlayStyle = {
-  position: "fixed" as const,
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
-  backgroundColor: "rgba(0, 0, 0, 0.4)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-};
 
-const popupStyle = {
-  backgroundColor: "white",
-  padding: "20px",
-  borderRadius: "8px",
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
-  textAlign: "center" as const,
-  minWidth: "300px",
-};
 
 function formatDateRange(start?: string | null, end?: string | null) {
   if (!start && !end) return null;
@@ -106,38 +92,28 @@ function formatDateRange(start?: string | null, end?: string | null) {
 // ─── Tabs ───────────────────────────────────────────────────────────────────
 
 function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boolean }) {
-  const [quantities, setQuantities] = useState<Record<number, number>>(
-    Object.fromEntries(items.map((r) => [r.id, r.quantity_used ?? 0]))
-  );
-  const [bagAssignments, setBagAssignments] = useState<Record<number, number | "">>(() =>
-    Object.fromEntries(
-      items
-        .filter((r) => r.bag_number != null)
-        .map((r) => [r.id, r.bag_number as number])
-    )
-  );
-  const [itemStatuses, setItemStatuses] = useState<Record<number, ItemStatus | "">>(() =>
-    Object.fromEntries(
-      items
-        .filter((r) => r.status != null)
-        .map((r) => [r.id, r.status as ItemStatus])
-    )
-  );
+  const [localItems, setLocalItems] = useState<MissionItem[]>(items);
   const [bagFilter, setBagFilter] = useState<number | null>(null);
+  const [editingItem, setEditingItem] = useState<MissionItem | null>(null);
   const [popupMessage, setPopupMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
   const { user } = useAuthUser();
 
+  const updateItem = (id: number, patch: Partial<MissionItem>) =>
+    setLocalItems((prev) => prev.map((r) => r.id === id ? { ...r, ...patch } : r));
+
   const assignedBags = Array.from(
-    new Set(Object.values(bagAssignments).filter((v): v is number => typeof v === "number"))
+    new Set(localItems.map((r) => r.bag_number).filter((b): b is number => b != null))
   ).sort((a, b) => a - b);
 
   const visibleItems = bagFilter === null
-    ? items
-    : items.filter((row) => bagAssignments[row.id] === bagFilter);
+    ? localItems
+    : localItems.filter((row) => row.bag_number === bagFilter);
 
   const handleIncrement = async (id: number) => {
-    const next = (quantities[id] ?? 0) + 1;
+    const item = localItems.find((r) => r.id === id);
+    if (!item) return;
+    const next = (item.quantity_used ?? 0) + 1;
 
     if (user?.user_metadata?.role !== "admin") {
       setPopupMessage("You do not have permission to update items.");
@@ -145,18 +121,29 @@ function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boo
       return;
     }
 
-    setQuantities((prev) => ({ ...prev, [id]: next }));
+    updateItem(id, { quantity_used: next });
     try {
       await updateMissionItem(id, next);
     } catch (err: any) {
       setPopupMessage(err.message || "You do not have permission to update items.");
       setShowPopup(true);
-      setQuantities((prev) => ({ ...prev, [id]: next - 1 }));
+      updateItem(id, { quantity_used: next - 1 });
     }
   };
 
   return (
     <>
+      <EditMissionItemPanel
+        isOpen={editingItem !== null}
+        item={editingItem}
+        isArchived={isArchived}
+        onClose={() => setEditingItem(null)}
+        onSaved={(updated) => {
+          updateItem(updated.id, updated);
+          setEditingItem(null);
+        }}
+      />
+
       {/* Bag filter chips */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-sm text-gray-500">Filter by bag:</span>
@@ -220,7 +207,7 @@ function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boo
                 </td>
                 <td className="py-3 pr-4">
                   <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-700">
-                    {quantities[row.id] ?? 0}
+                    {row.quantity_used ?? 0}
                   </span>
                 </td>
                 <td className="py-3 pr-4">
@@ -228,33 +215,32 @@ function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boo
                     type="number"
                     min={1}
                     placeholder="—"
-                    value={bagAssignments[row.id] ?? ""}
+                    value={row.bag_number ?? ""}
                     onChange={(e) => {
-                      const val = e.target.value === "" ? "" : parseInt(e.target.value);
-                      setBagAssignments((prev) => ({ ...prev, [row.id]: val as number | "" }));
-                    }}
-                    onBlur={(e) => {
                       const val = e.target.value === "" ? null : parseInt(e.target.value);
-                      updateMissionItemBag(row.id, val).catch(console.error);
+                      updateItem(row.id, { bag_number: val });
+                    }}
+                    onBlur={() => {
+                      updateMissionItemBag(row.id, row.bag_number ?? null).catch(console.error);
                     }}
                     className="w-16 rounded border border-gray-300 px-2 py-0.5 text-center text-sm text-gray-900 outline-none focus:border-indigo-500"
                   />
                 </td>
                 <td className="py-3 pr-4">
                   <select
-                    value={itemStatuses[row.id] ?? ""}
+                    value={row.status ?? ""}
                     disabled={!isArchived}
                     onChange={(e) => {
                       const val = e.target.value as ItemStatus | "";
-                      setItemStatuses((prev) => ({ ...prev, [row.id]: val }));
+                      updateItem(row.id, { status: val || null });
                       updateMissionItemStatus(row.id, val || null).catch(console.error);
                     }}
                     className={`rounded border px-2 py-0.5 text-xs font-medium outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
-                      itemStatuses[row.id] === "TO RETURN"
+                      row.status === "TO RETURN"
                         ? "border-red-300 bg-red-100 text-red-700"
-                        : itemStatuses[row.id] === "RETURNED"
+                        : row.status === "RETURNED"
                         ? "border-green-300 bg-green-100 text-green-700"
-                        : itemStatuses[row.id] === "USED"
+                        : row.status === "USED"
                         ? "border-yellow-300 bg-yellow-100 text-yellow-700"
                         : "border-gray-300 bg-white text-gray-500"
                     }`}
@@ -273,11 +259,23 @@ function ItemsTab({ items, isArchived }: { items: MissionItem[]; isArchived: boo
                     >
                       +
                     </button>
-                    <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
+                    <button
+                      onClick={() => setEditingItem(row)}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100"
+                      title="Edit item"
+                    >
                       ✏️
                     </button>
-                    <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
-                      ···
+                    <button
+                      onClick={async () => {
+                        if (!confirm("Remove this item from the mission?")) return;
+                        await deleteMissionItem(row.id);
+                        setLocalItems((prev) => prev.filter((r) => r.id !== row.id));
+                      }}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-red-400 hover:bg-red-50"
+                      title="Remove item"
+                    >
+                      🗑
                     </button>
                   </div>
                 </td>
@@ -315,8 +313,10 @@ function PeopleTab({
 }) {
   const [search, setSearch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [localMembers, setLocalMembers] = useState<MissionMember[]>(members);
+  const [editingMember, setEditingMember] = useState<MissionMember | null>(null);
 
-  const filtered = members.filter((m) =>
+  const filtered = localMembers.filter((m) =>
     (m.name ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
@@ -326,7 +326,19 @@ function PeopleTab({
         isOpen={drawerOpen}
         missionId={missionId}
         onClose={() => setDrawerOpen(false)}
-        onAdded={() => window.location.reload()}
+        onAdded={(newMember) => {
+          setLocalMembers((prev) => [...prev, newMember]);
+          setDrawerOpen(false);
+        }}
+      />
+      <EditMemberPanel
+        isOpen={editingMember !== null}
+        member={editingMember}
+        onClose={() => setEditingMember(null)}
+        onSaved={(updated) => {
+          setLocalMembers((prev) => prev.map((m) => m.id === updated.id ? updated : m));
+          setEditingMember(null);
+        }}
       />
 
       {/* Toolbar */}
@@ -359,6 +371,7 @@ function PeopleTab({
             <tr className="border-b border-gray-200 bg-white text-left text-gray-600">
               <th className="py-3 pr-4 font-medium">Name <span className="text-gray-400">⇅</span></th>
               <th className="py-3 pr-4 font-medium">Contact <span className="text-gray-400">⇅</span></th>
+              <th className="py-3 pr-4 font-medium">Phone <span className="text-gray-400">⇅</span></th>
               <th className="py-3 pr-4 font-medium">Form Filled <span className="text-gray-400">⇅</span></th>
               <th className="py-3 pr-4 font-medium">Role</th>
               <th className="py-3 font-medium">Actions</th>
@@ -369,6 +382,7 @@ function PeopleTab({
               <tr key={m.id} className="border-b border-gray-100 hover:bg-gray-50">
                 <td className="py-3 pr-4 text-gray-900">{m.name ?? "—"}</td>
                 <td className="py-3 pr-4 text-gray-600">{m.contact ?? "—"}</td>
+                <td className="py-3 pr-4 text-gray-600">{m.phone ?? "—"}</td>
                 <td className="py-3 pr-4">
                   <input type="checkbox" readOnly checked={m.form_filled ?? false} className="h-4 w-4" />
                 </td>
@@ -381,15 +395,25 @@ function PeopleTab({
                 </td>
                 <td className="py-3">
                   <div className="flex items-center gap-2">
-                    <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">✏️</button>
-                    <button className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">···</button>
+                    <button onClick={() => setEditingMember(m)} className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">✏️</button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Remove ${m.name ?? "this member"}?`)) return;
+                        await deleteMissionMember(m.id);
+                        setLocalMembers((prev) => prev.filter((x) => x.id !== m.id));
+                      }}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-red-400 hover:bg-red-50"
+                      title="Delete member"
+                    >
+                      🗑
+                    </button>
                   </div>
                 </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-12 text-center text-gray-400">
+                <td colSpan={6} className="py-12 text-center text-gray-400">
                   {search ? "No members match your search" : "No people added to this mission yet"}
                 </td>
               </tr>
@@ -401,47 +425,116 @@ function PeopleTab({
   );
 }
 
-function DocumentationTab() {
+function DocumentationTab({ missionId, initialDocs }: { missionId: number; initialDocs: DocumentEntry[] }) {
+  const [docs, setDocs] = useState<DocumentEntry[]>(initialDocs);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(docId: string) {
+    if (!confirm("Remove this document?")) return;
+    setDeletingId(docId);
+    try {
+      const res = await fetch(`/api/missions/${missionId}/documents`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ docId }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error ?? "Delete failed");
+      }
+      setDocs((prev) => prev.filter((d) => d.id !== docId));
+    } catch (err: any) {
+      alert(err.message || "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  const filtered = docs.filter((d) =>
+    d.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  function formatDate(iso: string) {
+    const d = new Date(iso);
+    return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+  }
+
   return (
     <div>
+      <AddDocumentPanel
+        isOpen={drawerOpen}
+        missionId={missionId}
+        onClose={() => setDrawerOpen(false)}
+        onAdded={(doc) => { setDocs((prev) => [...prev, doc]); setDrawerOpen(false); }}
+      />
+
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-500">
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input className="outline-none" placeholder="Search" />
-          </div>
-          <button className="flex h-8 w-8 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
-            ≡
-          </button>
+        <div className="flex items-center gap-2 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-500">
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input className="outline-none" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <button className="flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+        <button
+          onClick={() => setDrawerOpen(true)}
+          className="flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
           + Add Document
         </button>
       </div>
+
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-white text-left text-gray-600">
-              <th className="py-3 pr-4 font-medium">
-                Name <span className="text-gray-400">⇅</span>
-              </th>
-              <th className="py-3 pr-4 font-medium">
-                Upload Date <span className="text-gray-400">⇅</span>
-              </th>
-              <th className="py-3 pr-4 font-medium">
-                Uploaded by <span className="text-gray-400">⇅</span>
-              </th>
+              <th className="py-3 pr-4 font-medium">Name <span className="text-gray-400">⇅</span></th>
+              <th className="py-3 pr-4 font-medium">Type</th>
+              <th className="py-3 pr-4 font-medium">Upload Date <span className="text-gray-400">⇅</span></th>
+              <th className="py-3 pr-4 font-medium">Uploaded by <span className="text-gray-400">⇅</span></th>
               <th className="py-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td colSpan={4} className="py-12 text-center text-gray-400">
-                No documents added to this mission yet
-              </td>
-            </tr>
+            {filtered.map((doc) => (
+              <tr key={doc.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="py-3 pr-4 text-gray-900">
+                  {doc.url ? (
+                    <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                      {doc.name}
+                    </a>
+                  ) : doc.name}
+                </td>
+                <td className="py-3 pr-4 text-gray-600">{doc.type}</td>
+                <td className="py-3 pr-4 text-gray-600">{formatDate(doc.created_at)}</td>
+                <td className="py-3 pr-4 text-gray-600">{doc.uploaded_by}</td>
+                <td className="py-3">
+                  <div className="flex items-center gap-2">
+                    {doc.url && (
+                      <a href={doc.url} download={doc.name} className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100" title="Download">
+                        ↓
+                      </a>
+                    )}
+                    <button
+                      onClick={() => handleDelete(doc.id)}
+                      disabled={deletingId === doc.id}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-red-400 hover:bg-red-50 disabled:opacity-40"
+                      title="Remove"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-12 text-center text-gray-400">
+                  {search ? "No documents match your search" : "No documents added to this mission yet"}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -453,24 +546,25 @@ function DocumentationTab() {
 
 type Tab = "items" | "people" | "documentation";
 
-export default function MissionDetailClient({ mission, items, members }: Props) {
+export default function MissionDetailClient({ mission, items, members, documents }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("items");
   const [editMissionOpen, setEditMissionOpen] = useState(false);
+  const [localMission, setLocalMission] = useState(mission);
 
-  const dateRange = formatDateRange(mission.start_date, mission.end_date);
+  const dateRange = formatDateRange(localMission.start_date, localMission.end_date);
   const categoryColor =
-    CATEGORY_COLORS[mission.category ?? ""] ?? "bg-gray-100 text-gray-700";
-  const categoryAbbr = mission.category
-    ? getCategoryAbbr(mission.category)
+    CATEGORY_COLORS[localMission.category ?? ""] ?? "bg-gray-100 text-gray-700";
+  const categoryAbbr = localMission.category
+    ? getCategoryAbbr(localMission.category)
     : null;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <EditMissionPanel
         isOpen={editMissionOpen}
-        missionId={mission.id}
+        missionId={localMission.id}
         onClose={() => setEditMissionOpen(false)}
-        onSaved={() => window.location.reload()}
+        onSaved={(patch) => setLocalMission((prev) => ({ ...prev, ...patch }))}
       />
 
       <div className="mx-auto max-w-6xl rounded-xl bg-white p-6 shadow-sm">
@@ -517,7 +611,7 @@ export default function MissionDetailClient({ mission, items, members }: Props) 
         <div className="mb-6">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900">
-              {mission.mission_name}
+              {localMission.mission_name}
             </h1>
             {categoryAbbr && (
               <span
@@ -537,13 +631,13 @@ export default function MissionDetailClient({ mission, items, members }: Props) 
                 {dateRange}
               </span>
             )}
-            {mission.location && (
+            {localMission.location && (
               <span className="flex items-center gap-1">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                {mission.location}
+                {localMission.location}
               </span>
             )}
             <span className="text-gray-400">{items.length} items</span>
@@ -580,7 +674,7 @@ export default function MissionDetailClient({ mission, items, members }: Props) 
           />
         )}
         {activeTab === "people" && <PeopleTab members={members} missionId={mission.id} />}
-        {activeTab === "documentation" && <DocumentationTab />}
+        {activeTab === "documentation" && <DocumentationTab missionId={mission.id} initialDocs={documents} />}
       </div>
     </div>
   );
