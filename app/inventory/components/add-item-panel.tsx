@@ -41,6 +41,7 @@ export default function AddItemPanel({
   const [unitOfMeasure, setUnitOfMeasure] = useState("");
   const [typicalShelfLife, setTypicalShelfLife] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [lowStockThreshold, setLowStockThreshold] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
   const [location, setLocation] = useState("");
 
@@ -64,6 +65,8 @@ export default function AddItemPanel({
     setLotNumber("");
     setUnitOfMeasure("");
     setTypicalShelfLife("");
+    setQuantity("");
+    setLowStockThreshold("");
     setExpirationDate("");
     setLocation("");
     setMarketValue("");
@@ -140,6 +143,7 @@ export default function AddItemPanel({
         valuation_source: valuationSource,
         acquisition_method: acquisitionMethod,
         quantity: parseInt(quantity) || 0,
+        alert_threshold: lowStockThreshold.trim() === "" ? null : parseInt(lowStockThreshold, 10),
         status: "IN STORAGE",
         mission: "",
         document,
@@ -280,6 +284,17 @@ export default function AddItemPanel({
               placeholder="Add quantity"
               value={quantity}
               onChange={(e) => setQuantity(e.currentTarget.value)}
+            />
+          </div>
+
+          <div>
+            {label("Low Stock Alert Threshold", false, errors.lowStockThreshold)}
+            <Textfield
+              type="number"
+              min="0"
+              placeholder="Alert when quantity falls below this"
+              value={lowStockThreshold}
+              onChange={(e) => setLowStockThreshold(e.currentTarget.value)}
             />
           </div>
 
