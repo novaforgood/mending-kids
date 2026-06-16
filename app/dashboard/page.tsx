@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchAlertItems } from "../alerts/actions";
+import { fetchAlertThresholdDays } from "../settings/alert-threshold/actions";
 import { fetchActivityLog, fetchMissions } from "./actions";
 
 type Row = {
@@ -25,6 +26,7 @@ type Mission = {
   location: string;
   category: string;
   status: string;
+  created_at: string;
 };
 
 type ActivityLog = {
@@ -41,6 +43,7 @@ export default function DashboardPage() {
   const [currentMissionPage, setCurrentMissionPage] = useState(1);
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+  const [alertThresholdDays, setAlertThresholdDays] = useState(180);
 
   function formatTimeAgo(createdAt: string, nowTime: number): string {
     const createdTime = new Date(createdAt).getTime();
@@ -113,15 +116,28 @@ export default function DashboardPage() {
     loadActivityLogs();
   }, []);
 
+  useEffect(() => {
+    async function loadThreshold() {
+      try {
+        const value = await fetchAlertThresholdDays();
+        setAlertThresholdDays(value);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    loadThreshold();
+  }, []);
+
   const now = new Date();
-  const sixMonthsFromNow = new Date();
-  sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+  const expirationCutoff = new Date(now);
+  expirationCutoff.setDate(expirationCutoff.getDate() + alertThresholdDays);
 
   const expirationItems = rows
     .filter((row) => {
       if (!row.expiration_date) return false;
       const expDate = new Date(row.expiration_date);
-      return expDate <= sixMonthsFromNow;
+      return expDate <= expirationCutoff;
     })
     .sort((a, b) => {
       const dateA = new Date(a.expiration_date!);
@@ -260,19 +276,18 @@ export default function DashboardPage() {
     return { icon: "▲", text: "Actions required", className: "text-orange-600" };
   }
 
-  const orderedMissions = [...missions].sort((a, b) => {
-    const rank = (status: string) => {
-      const normalizedStatus = status.toLowerCase();
-      if (normalizedStatus === "in_progress") return 0;
-      if (normalizedStatus === "planned") return 1;
-      if (normalizedStatus === "completed") return 2;
-      return 3;
-    };
-
-    const rankDiff = rank(a.status) - rank(b.status);
-    if (rankDiff !== 0) return rankDiff;
-    return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
-  });
+  // Only "current" missions — mirrors the Current tab on the missions page
+  // (everything not archived) — ordered by most recently created first.
+  const todayStr = new Date().toISOString().split("T")[0];
+  const orderedMissions = [...missions]
+    .filter((mission) => {
+      const manuallyArchived = mission.status === "archived";
+      const restored = mission.status === "active";
+      const pastEndDate = !!mission.end_date && mission.end_date < todayStr;
+      const goesToArchive = manuallyArchived || (!restored && pastEndDate);
+      return !goesToArchive;
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const missionsPerPage = 4;
   const totalMissionPages = Math.max(1, Math.ceil(orderedMissions.length / missionsPerPage));

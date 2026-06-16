@@ -10,6 +10,7 @@ import ProjectIcon from '@atlaskit/icon/core/project';
 import PersonAvatarIcon from '@atlaskit/icon/core/person-avatar';
 import SettingsIcon from '@atlaskit/icon/core/settings';
 import NotificationIcon from '@atlaskit/icon/core/notification';
+import ClockIcon from '@atlaskit/icon/core/clock';
 import { supabaseBrowser as supabase } from "@/lib/supabase/client";
 
 export default function Header() {
@@ -59,6 +60,14 @@ export default function Header() {
             className="w-5 h-5 text-gray-700 cursor-pointer flex items-center justify-center hover:text-gray-900"
           >
             <NotificationIcon label="Notifications" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push("/settings/alert-threshold")}
+            className="w-5 h-5 text-gray-700 cursor-pointer flex items-center justify-center hover:text-gray-900"
+          >
+            <ClockIcon label="Alert Threshold" />
           </button>
 
           <button
