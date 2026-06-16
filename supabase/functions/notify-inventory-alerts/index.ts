@@ -47,19 +47,27 @@ Deno.serve(async (_req: Request) => {
 
     const rows: InventoryRow[] = allItems ?? [];
 
+    // 1b. Fetch the global expiration-alert threshold (days); fall back to ~6 months.
+    const { data: settings } = await supabase
+      .from("global_settings")
+      .select("expiration_alert_days")
+      .eq("id", 1)
+      .maybeSingle();
+    const thresholdDays = settings?.expiration_alert_days ?? 180;
+
     // 2. Filter alerts (mirrors app/alerts/page.tsx logic exactly)
     const lowStockItems = rows
       .filter((r) => r.alert_threshold != null && r.quantity < r.alert_threshold)
       .sort((a, b) => a.quantity / a.alert_threshold! - b.quantity / b.alert_threshold!);
 
     const now = new Date();
-    const sixMonthsFromNow = new Date(now);
-    sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+    const expirationCutoff = new Date(now);
+    expirationCutoff.setDate(expirationCutoff.getDate() + thresholdDays);
 
     const expiringItems = rows
       .filter((r) => {
         if (!r.expiration_date) return false;
-        return new Date(r.expiration_date) <= sixMonthsFromNow;
+        return new Date(r.expiration_date) <= expirationCutoff;
       })
       .sort((a, b) => new Date(a.expiration_date!).getTime() - new Date(b.expiration_date!).getTime());
 

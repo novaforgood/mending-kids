@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchAlertItems } from "./actions";
+import { fetchAlertThresholdDays } from "../settings/alert-threshold/actions";
 
 type Row = {
   id: number;
@@ -18,6 +19,7 @@ type Filter = "all" | "expiration" | "low-stock";
 export default function AlertsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
+  const [alertThresholdDays, setAlertThresholdDays] = useState(180);
 
   useEffect(() => {
     async function load() {
@@ -31,21 +33,33 @@ export default function AlertsPage() {
     load();
   }, []);
 
+  useEffect(() => {
+    async function loadThreshold() {
+      try {
+        const value = await fetchAlertThresholdDays();
+        setAlertThresholdDays(value);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadThreshold();
+  }, []);
+
   // Low stock items: quantity < alert_threshold
   const lowStockItems = rows
     .filter((row) => row.quantity < row.alert_threshold)
     .sort((a, b) => a.quantity / a.alert_threshold - b.quantity / b.alert_threshold);
 
-  // Expiration items: has expiration date and expires within 6 months
+  // Expiration items: has expiration date and expires within the global threshold window
   const now = new Date();
-  const sixMonthsFromNow = new Date();
-  sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+  const expirationCutoff = new Date(now);
+  expirationCutoff.setDate(expirationCutoff.getDate() + alertThresholdDays);
 
   const expirationItems = rows
     .filter((row) => {
       if (!row.expiration_date) return false;
       const expDate = new Date(row.expiration_date);
-      return expDate <= sixMonthsFromNow;
+      return expDate <= expirationCutoff;
     })
     .sort((a, b) => {
       const dateA = new Date(a.expiration_date!);
