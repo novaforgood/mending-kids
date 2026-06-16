@@ -601,9 +601,6 @@ export default function MissionDetailClient({ mission, items, members, documents
             >
               Edit Mission
             </button>
-            <button className="flex h-8 w-8 items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100">
-              ···
-            </button>
           </div>
         </div>
 
