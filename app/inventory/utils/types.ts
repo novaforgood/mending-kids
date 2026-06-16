@@ -34,6 +34,7 @@ export type InventoryItem = {
     type: string;
     uploaded_by: string;
     created_at: string;
+    url?: string;
   }[] | null;
   active: boolean;
 };

@@ -178,6 +178,10 @@ export async function updateItemDocumentation(
 
   if (error) throw new Error(error.message);
 
+  if (document) {
+    await appendInventoryDocument(id, document, userEmail);
+  }
+
   await logInventoryChange(
     "edited",
     userEmail,
