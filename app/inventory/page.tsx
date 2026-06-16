@@ -336,7 +336,7 @@ export default function InventoryPage() {
                 />
 
                 <DropdownMenu
-                  trigger={({ triggerRef, ...triggerProps }) => (
+                  trigger={({ triggerRef, isSelected, testId, ...triggerProps }) => (
                     <IconButton
                       {...triggerProps}
                       ref={triggerRef}
@@ -436,7 +436,7 @@ export default function InventoryPage() {
         <div className="flex items-center justify-center gap-2 -mt-3">
           <div style={{ display: "flex" }}>
             <DropdownMenu
-              trigger={({ triggerRef, ...triggerProps }) => (
+              trigger={({ triggerRef, isSelected, testId, ...triggerProps }) => (
                 <button
                   {...triggerProps}
                   ref={triggerRef}
