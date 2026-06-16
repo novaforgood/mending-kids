@@ -72,7 +72,11 @@ function money2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function getInventoryStatus(quantity: number, expiration: Date | string | null | undefined): string {
+function getInventoryStatus(
+  quantity: number,
+  expiration: Date | string | null | undefined,
+  alertThreshold: number | null | undefined
+): string {
   const now = new Date();
   const expirationDate = expiration ? new Date(expiration) : null;
 
@@ -80,7 +84,9 @@ function getInventoryStatus(quantity: number, expiration: Date | string | null |
     return "Expired";
   }
 
-  if (quantity < 50) {
+  // Mirror the alert logic: an item is "Low Stock" only when it has a
+  // per-item threshold set and its quantity has fallen below it.
+  if (alertThreshold != null && quantity < alertThreshold) {
     return "Low Stock";
   }
 
@@ -91,12 +97,14 @@ function getInventoryStatus(quantity: number, expiration: Date | string | null |
 export async function addItem(payload: InventoryPayload, userEmail: string) {
   const { document, ...inventoryFields } = payload;
 
+  const status = getInventoryStatus(payload.quantity, payload.expiration, payload.alert_threshold);
+
   const insertRow = {
     ...inventoryFields,
     initial_quantity: payload.quantity,
     created_by: userEmail,
     total_value: money2(payload.quantity * payload.market_value_per_unit),
-    status: getInventoryStatus(payload.quantity, payload.expiration),
+    status,
   };
 
   let { data, error } = await supabaseServer
@@ -104,6 +112,7 @@ export async function addItem(payload: InventoryPayload, userEmail: string) {
     .insert({
       ...payload,
       total_value: money2(payload.quantity * payload.market_value_per_unit),
+      status,
     })
     .select()
     .single();
@@ -232,7 +241,7 @@ export async function updateItemQuantity(
 ) {
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
-    .select("quantity, item_description, active, market_value_per_unit, expiration")
+    .select("quantity, item_description, active, market_value_per_unit, expiration, alert_threshold")
     .eq("id", id)
     .single();
 
@@ -244,7 +253,7 @@ export async function updateItemQuantity(
     quantity: clampedQuantity,
     total_value: money2(clampedQuantity * oldItem.market_value_per_unit),
     active: clampedQuantity > 0,
-    status: getInventoryStatus(clampedQuantity, oldItem.expiration),
+    status: getInventoryStatus(clampedQuantity, oldItem.expiration, oldItem.alert_threshold),
   };
 
   const { error } = await supabaseServer
@@ -286,7 +295,7 @@ export async function updateItemDetails(
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
     .select(
-      "manufacturer, reference_number, lot_number, unit_of_measure, typical_shelf_life, location, internal_notes, item_description, active"
+      "manufacturer, reference_number, lot_number, unit_of_measure, typical_shelf_life, location, internal_notes, item_description, active, alert_threshold, quantity, expiration"
     )
     .eq("id", id)
     .single();
@@ -296,6 +305,15 @@ export async function updateItemDetails(
   const cleanPayload = Object.fromEntries(
     Object.entries(payload).filter(([, v]) => v !== undefined)
   );
+
+  // Keep the stored status lozenge in sync when the threshold changes.
+  if (payload.alert_threshold !== undefined) {
+    cleanPayload.status = getInventoryStatus(
+      oldItem.quantity,
+      oldItem.expiration,
+      payload.alert_threshold
+    );
+  }
 
   const { error } = await supabaseServer
     .from("inventory")
@@ -372,6 +390,15 @@ export async function updateItemDetails(
       new: String(payload.active),
     };
   }
+  if (
+    payload.alert_threshold !== undefined &&
+    payload.alert_threshold !== oldItem.alert_threshold
+  ) {
+    changes.alert_threshold = {
+      old: oldItem.alert_threshold != null ? String(oldItem.alert_threshold) : "",
+      new: payload.alert_threshold != null ? String(payload.alert_threshold) : "",
+    };
+  }
 
   if (Object.keys(changes).length > 0) {
     await logInventoryChange(
@@ -394,7 +421,7 @@ export async function addItemQuantity(
   // Fetch current item state
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
-    .select("quantity, item_description, market_value_per_unit, active, expiration")
+    .select("quantity, item_description, market_value_per_unit, active, expiration, alert_threshold")
     .eq("id", id)
     .single();
 
@@ -410,7 +437,7 @@ export async function addItemQuantity(
       quantity: newQuantity,
       total_value: newTotalValue,
       active: newQuantity > 0,
-      status: getInventoryStatus(newQuantity, oldItem.expiration),
+      status: getInventoryStatus(newQuantity, oldItem.expiration, oldItem.alert_threshold),
     })
     .eq("id", id);
 

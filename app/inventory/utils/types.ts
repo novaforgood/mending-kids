@@ -15,6 +15,7 @@ export type InventoryItem = {
   status: string;
   mission: string;
   expiration: Date | null;
+  alert_threshold: number | null;
   mission_inventory?: {
     mission_id: number;
     quantity_used: number | null;
@@ -91,6 +92,7 @@ export type InventoryPayload = {
   status: string;
   mission: string;
   expiration: Date | null;
+  alert_threshold: number | null;
   market_value_per_unit: number;
   valuation_source: string;
   acquisition_method: string;
@@ -108,6 +110,7 @@ export type UpdateItemDetailsPayload = Partial<{
   location: string;
   internal_notes: string;
   active: boolean;
+  alert_threshold: number | null;
 }>;
 
 export type ItemForm = {
@@ -118,6 +121,7 @@ export type ItemForm = {
   typical_shelf_life: string;
   location: string;
   internal_notes: string;
+  alert_threshold: string;
 };
 
 export type ActivityRow = {

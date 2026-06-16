@@ -42,6 +42,7 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
       typical_shelf_life: "",
       location: "",
       internal_notes: "",
+      alert_threshold: "",
     },
   };
 
@@ -66,6 +67,7 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
               typical_shelf_life: item.typical_shelf_life ?? "",
               location: item.location ?? "",
               internal_notes: item.internal_notes ?? "",
+              alert_threshold: item.alert_threshold != null ? String(item.alert_threshold) : "",
             }
           : this.state.form,
       });
@@ -286,6 +288,42 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
       );
     };
 
+    const parseThreshold = (v: string): number | null => {
+      const trimmed = v.trim();
+      if (trimmed === "") return null;
+      const n = Number(trimmed);
+      return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
+    };
+
+    const renderThresholdField = () => {
+      const fieldLabel = "Low Stock Alert Threshold";
+      if (isEditing) {
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B778C" }}>{fieldLabel}</div>
+            <input
+              type="number"
+              min={0}
+              value={form.alert_threshold ?? ""}
+              placeholder="Alert when quantity falls below this"
+              onChange={(e) => updateField("alert_threshold", e.target.value)}
+              style={{ padding: 8, border: "1px solid #DFE1E6", borderRadius: 6, fontSize: 14 }}
+            />
+          </div>
+        );
+      }
+      return (
+        <CustomInlineEdit
+          label={fieldLabel}
+          value={form.alert_threshold || ""}
+          onSave={async (v) => {
+            updateField("alert_threshold", v);
+            await updateItemDetails(item.id, { alert_threshold: parseThreshold(v) }, "user@email.com");
+          }}
+        />
+      );
+    };
+
     return (
       <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 32 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
@@ -296,6 +334,7 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
           {renderField("Unit of Measure", "unit_of_measure", item.unit_of_measure || "")}
           {renderField("Typical Shelf Life", "typical_shelf_life", item.typical_shelf_life ? `${item.typical_shelf_life} days` : "")}
           {renderField("Location", "location", item.location ?? "")}
+          {renderThresholdField()}
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
@@ -464,7 +503,17 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
                 <CustomButton
                   onClick={async () => {
                     if (!item) return;
-                    await updateItemDetails(item.id, this.state.form, "user@email.com");
+                    const { alert_threshold, ...rest } = this.state.form;
+                    const trimmed = alert_threshold.trim();
+                    const parsedThreshold =
+                      trimmed === "" || !Number.isFinite(Number(trimmed))
+                        ? null
+                        : Math.max(0, Math.round(Number(trimmed)));
+                    await updateItemDetails(
+                      item.id,
+                      { ...rest, alert_threshold: parsedThreshold },
+                      "user@email.com"
+                    );
                     this.setState({ isEditing: false });
                   }}
                 >
