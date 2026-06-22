@@ -48,7 +48,9 @@ export default function AlertsPage() {
 
   // Low stock items: quantity < alert_threshold
   const lowStockItems = rows
-    .filter((row) => row.quantity < row.alert_threshold)
+    .filter(
+      (row) => row.active && row.alert_threshold != null && row.quantity < row.alert_threshold
+    )
     .sort((a, b) => a.quantity / a.alert_threshold - b.quantity / b.alert_threshold);
 
   // Expiration items: has expiration date and expires within the global threshold window

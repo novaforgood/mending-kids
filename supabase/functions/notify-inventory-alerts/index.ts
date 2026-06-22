@@ -58,7 +58,7 @@ Deno.serve(async (_req: Request) => {
 
     // 2. Filter alerts (mirrors app/alerts/page.tsx logic exactly)
     const lowStockItems = rows
-      .filter((r) => r.alert_threshold != null && r.quantity < r.alert_threshold)
+      .filter((r) => r.active && r.alert_threshold != null && r.quantity < r.alert_threshold)
       .sort((a, b) => a.quantity / a.alert_threshold! - b.quantity / b.alert_threshold!);
 
     const now = new Date();
