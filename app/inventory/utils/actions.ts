@@ -256,7 +256,7 @@ export async function deleteItem(id: number, userEmail: string) {
   await logInventoryChange("deleted", userEmail, id, item.item_description);
 }
 
-/* Update item quantity - archives if quantity reaches 0 */
+/* Update item quantity */
 export async function updateItemQuantity(
   id: number,
   newQuantity: number,
@@ -264,7 +264,7 @@ export async function updateItemQuantity(
 ) {
   const { data: oldItem, error: fetchError } = await supabaseServer
     .from("inventory")
-    .select("quantity, item_description, active, market_value_per_unit, expiration, alert_threshold")
+    .select("quantity, item_description, market_value_per_unit, expiration, alert_threshold")
     .eq("id", id)
     .single();
 
@@ -275,7 +275,6 @@ export async function updateItemQuantity(
   const updates = {
     quantity: clampedQuantity,
     total_value: money2(clampedQuantity * oldItem.market_value_per_unit),
-    active: clampedQuantity > 0,
     status: getInventoryStatus(clampedQuantity, oldItem.expiration, oldItem.alert_threshold),
   };
 
@@ -286,25 +285,13 @@ export async function updateItemQuantity(
 
   if (error) throw new Error(error.message);
 
-  // Only log changes if something actually changed
-  const quantityChanged = String(oldItem.quantity) !== String(newQuantity);
-  const becameArchived = newQuantity === 0 && oldItem.active;
-
-  if (quantityChanged || becameArchived) {
-    const changes: Record<string, { old: string; new: string }> = {};
-    if (quantityChanged) {
-      changes.quantity = { old: String(oldItem.quantity), new: String(newQuantity) };
-    }
-    if (becameArchived) {
-      changes.active = { old: String(oldItem.active), new: "false" };
-    }
-
+  if (String(oldItem.quantity) !== String(clampedQuantity)) {
     await logInventoryChange(
-      newQuantity === 0 ? "archived" : "edited",
+      "edited",
       userEmail,
       id,
       oldItem.item_description,
-      Object.keys(changes).length > 0 ? changes : undefined
+      { quantity: { old: String(oldItem.quantity), new: String(clampedQuantity) } }
     );
   }
 }
@@ -460,7 +447,6 @@ export async function addItemQuantity(
     .update({
       quantity: newQuantity,
       total_value: newTotalValue,
-      active: newQuantity > 0,
       status: getInventoryStatus(newQuantity, oldItem.expiration, oldItem.alert_threshold),
     })
     .eq("id", id);
