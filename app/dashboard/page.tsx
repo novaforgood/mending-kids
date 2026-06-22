@@ -15,7 +15,7 @@ type Row = {
   unit: string | null;
   unit_of_measure: string | null;
   alert_threshold: number | null;
-  expiration_date: string | null;
+  expiration: string | null;
 };
 
 type Mission = {
@@ -135,13 +135,13 @@ export default function DashboardPage() {
 
   const expirationItems = rows
     .filter((row) => {
-      if (!row.expiration_date) return false;
-      const expDate = new Date(row.expiration_date);
+      if (!row.expiration) return false;
+      const expDate = new Date(row.expiration);
       return expDate <= expirationCutoff;
     })
     .sort((a, b) => {
-      const dateA = new Date(a.expiration_date!);
-      const dateB = new Date(b.expiration_date!);
+      const dateA = new Date(a.expiration!);
+      const dateB = new Date(b.expiration!);
       return dateA.getTime() - dateB.getTime();
     });
 
@@ -150,7 +150,7 @@ export default function DashboardPage() {
     badgeClass: string;
     priority: number;
   } {
-    if (row.expiration_date && new Date(row.expiration_date) < now) {
+    if (row.expiration && new Date(row.expiration) < now) {
       return { label: "EXPIRED", badgeClass: "bg-red-100 text-red-800", priority: 0 };
     }
 
@@ -525,7 +525,7 @@ export default function DashboardPage() {
 
             <div className="space-y-3 overflow-y-auto flex-1">
               {expirationItems.map((item) => {
-                const { text, priority, borderColor, textColor } = getExpirationInfo(item.expiration_date!);
+                const { text, priority, borderColor, textColor } = getExpirationInfo(item.expiration!);
                 return (
                   <div key={`exp-${item.id}`} className="bg-white border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between">
@@ -537,7 +537,7 @@ export default function DashboardPage() {
                         </span>
                         <span className="text-gray-700 text-sm">
                           {item.quantity} {item.unit} {item.reference_number} {text} (
-                          {formatDate(item.expiration_date!)})
+                          {formatDate(item.expiration!)})
                         </span>
                       </div>
                       <Link href="/inventory" className="text-gray-400 text-lg hover:text-gray-600">

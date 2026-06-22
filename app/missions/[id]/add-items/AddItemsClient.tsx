@@ -13,7 +13,7 @@ type InventoryItem = {
   item_description: string | null;
   manufacturer: string | null;
   reference_number: string | null;
-  expiration_date: string | null;
+  expiration: string | null;
   quantity: number | null;
   unit_of_measure: string | null;
 };
@@ -314,7 +314,7 @@ export default function AddItemsClient({ missionId, inventory, existingInventory
                         className="w-16 rounded border border-gray-300 px-2 py-0.5 text-center text-sm text-gray-900 outline-none focus:border-indigo-500"
                       />
                     </td>
-                    <td className="py-2 text-gray-600">{formatDate(item.expiration_date)}</td>
+                    <td className="py-2 text-gray-600">{formatDate(item.expiration)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -380,7 +380,7 @@ export default function AddItemsClient({ missionId, inventory, existingInventory
                         ? `${item.quantity}${item.unit_of_measure ? ` ${item.unit_of_measure}` : ""}`
                         : "—"}
                     </td>
-                    <td className="py-3 text-gray-600">{formatDate(item.expiration_date)}</td>
+                    <td className="py-3 text-gray-600">{formatDate(item.expiration)}</td>
                   </tr>
                 );
               })}

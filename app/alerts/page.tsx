@@ -11,7 +11,7 @@ type Row = {
   product: string;
   quantity: number;
   alert_threshold: number;
-  expiration_date: string | null;
+  expiration: string | null;
 };
 
 type Filter = "all" | "expiration" | "low-stock";
@@ -57,13 +57,13 @@ export default function AlertsPage() {
 
   const expirationItems = rows
     .filter((row) => {
-      if (!row.expiration_date) return false;
-      const expDate = new Date(row.expiration_date);
+      if (!row.expiration) return false;
+      const expDate = new Date(row.expiration);
       return expDate <= expirationCutoff;
     })
     .sort((a, b) => {
-      const dateA = new Date(a.expiration_date!);
-      const dateB = new Date(b.expiration_date!);
+      const dateA = new Date(a.expiration!);
+      const dateB = new Date(b.expiration!);
       return dateA.getTime() - dateB.getTime();
     });
 
@@ -157,7 +157,7 @@ export default function AlertsPage() {
 
           {/* Expiration items */}
           {showExpiration && expirationItems.map((item) => {
-            const { text, priority, borderColor, textColor } = getExpirationInfo(item.expiration_date!);
+            const { text, priority, borderColor, textColor } = getExpirationInfo(item.expiration!);
             return (
               <div key={`exp-${item.id}`} className="bg-gray-100 rounded-lg p-4">
                 <div className="flex items-center justify-between">
@@ -166,7 +166,7 @@ export default function AlertsPage() {
                       {priority}
                     </span>
                     <span className="text-gray-700">
-                      {item.quantity} {item.product} {text} ({formatDate(item.expiration_date!)})
+                      {item.quantity} {item.product} {text} ({formatDate(item.expiration!)})
                     </span>
                   </div>
                   <Link href="/kian-test-table" className="text-gray-400 text-lg hover:text-gray-600">→</Link>

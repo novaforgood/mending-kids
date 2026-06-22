@@ -19,7 +19,7 @@ type InventoryRow = {
   item_description: string | null;
   quantity: number;
   alert_threshold: number | null;
-  expiration_date: string | null;
+  expiration: string | null;
   location: string | null;
 };
 
@@ -41,7 +41,7 @@ Deno.serve(async (_req: Request) => {
     // 1. Fetch all inventory rows
     const { data: allItems, error: inventoryError } = await supabase
       .from("inventory")
-      .select("id, item_description, quantity, alert_threshold, expiration_date, location");
+      .select("id, item_description, quantity, alert_threshold, expiration, location");
 
     if (inventoryError) throw new Error(`Inventory query failed: ${inventoryError.message}`);
 
@@ -66,10 +66,10 @@ Deno.serve(async (_req: Request) => {
 
     const expiringItems = rows
       .filter((r) => {
-        if (!r.expiration_date) return false;
-        return new Date(r.expiration_date) <= expirationCutoff;
+        if (!r.expiration) return false;
+        return new Date(r.expiration) <= expirationCutoff;
       })
-      .sort((a, b) => new Date(a.expiration_date!).getTime() - new Date(b.expiration_date!).getTime());
+      .sort((a, b) => new Date(a.expiration!).getTime() - new Date(b.expiration!).getTime());
 
     // 3. Skip if nothing to report
     if (lowStockItems.length === 0 && expiringItems.length === 0) {
@@ -204,8 +204,8 @@ function buildHtmlTemplate(
         <tr style="background:${i % 2 === 0 ? "#fff" : "#fff5f5"};">
           <td style="padding:8px 10px;border:1px solid #fca5a5;">${item.item_description ?? "—"}</td>
           <td style="padding:8px 10px;border:1px solid #fca5a5;text-align:center;">${item.quantity}</td>
-          <td style="padding:8px 10px;border:1px solid #fca5a5;">${formatDate(item.expiration_date!)}</td>
-          <td style="padding:8px 10px;border:1px solid #fca5a5;">${getExpiryLabel(item.expiration_date!, now)}</td>
+          <td style="padding:8px 10px;border:1px solid #fca5a5;">${formatDate(item.expiration!)}</td>
+          <td style="padding:8px 10px;border:1px solid #fca5a5;">${getExpiryLabel(item.expiration!, now)}</td>
           <td style="padding:8px 10px;border:1px solid #fca5a5;">${item.location ?? "—"}</td>
         </tr>`).join("")}
       </tbody>
