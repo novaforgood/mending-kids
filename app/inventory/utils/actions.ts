@@ -21,15 +21,25 @@ async function logInventoryChange(
   let description = itemDescription || "";
 
   if (changes) {
-    const changeDescriptions = Object.entries(changes).map(
-      ([field, { old: oldVal, new: newVal }]) =>
-        `${field}: "${oldVal}" → "${newVal}"`
+    const changedEntries = Object.entries(changes).filter(
+      ([, { old: oldVal, new: newVal }]) => oldVal !== newVal
     );
 
-    description +=
-      changeDescriptions.length > 0
-        ? ` (${changeDescriptions.join(", ")})`
-        : "";
+    if (type === "edited" && changedEntries.length === 0) {
+      return;
+    }
+
+    if (changedEntries.length > 0) {
+      const changeDescriptions = changedEntries.map(
+        ([field, { old: oldVal, new: newVal }]) =>
+          `${field}: "${oldVal}" → "${newVal}"`
+      );
+      description += ` (${changeDescriptions.join(", ")})`;
+    }
+  }
+
+  if (type === "added" && quantity != null && !changes) {
+    description += ` (initial quantity: ${quantity})`;
   }
 
   await supabaseServer.from("activity_log").insert({
@@ -111,6 +121,7 @@ export async function addItem(payload: InventoryPayload, userEmail: string) {
     .from("inventory")
     .insert({
       ...payload,
+      internal_notes: "",
       total_value: money2(payload.quantity * payload.market_value_per_unit),
       status,
     })
@@ -121,7 +132,7 @@ export async function addItem(payload: InventoryPayload, userEmail: string) {
     const { initial_quantity: _ignored, ...withoutInit } = insertRow;
     ({ data, error } = await supabaseServer
       .from("inventory")
-      .insert(withoutInit)
+      .insert({ ...withoutInit, internal_notes: "" })
       .select()
       .single());
   }
@@ -191,26 +202,38 @@ export async function updateItemDocumentation(
     await appendInventoryDocument(id, document, userEmail);
   }
 
-  await logInventoryChange(
-    "edited",
-    userEmail,
-    id,
-    oldItem.item_description,
-    {
-      market_value_per_unit: {
-        old: String(oldItem.market_value_per_unit),
-        new: String(marketValuePerUnit),
-      },
-      valuation_source: {
-        old: oldItem.valuation_source || "",
-        new: valuationSource,
-      },
-      acquisition_method: {
-        old: oldItem.acquisition_method || "",
-        new: acquisitionMethod,
-      },
-    }
-  );
+  const changes: Record<string, { old: string; new: string }> = {};
+
+  if (money2(oldItem.market_value_per_unit) !== unit) {
+    changes.market_value_per_unit = {
+      old: String(money2(oldItem.market_value_per_unit)),
+      new: String(unit),
+    };
+  }
+
+  if ((oldItem.valuation_source || "") !== valuationSource) {
+    changes.valuation_source = {
+      old: oldItem.valuation_source || "",
+      new: valuationSource,
+    };
+  }
+
+  if ((oldItem.acquisition_method || "") !== acquisitionMethod) {
+    changes.acquisition_method = {
+      old: oldItem.acquisition_method || "",
+      new: acquisitionMethod,
+    };
+  }
+
+  if (Object.keys(changes).length > 0) {
+    await logInventoryChange(
+      "edited",
+      userEmail,
+      id,
+      oldItem.item_description,
+      changes
+    );
+  }
 }
 
 /* Delete item */
@@ -306,7 +329,6 @@ export async function updateItemDetails(
     Object.entries(payload).filter(([, v]) => v !== undefined)
   );
 
-  // Keep the stored status lozenge in sync when the threshold changes.
   if (payload.alert_threshold !== undefined) {
     cleanPayload.status = getInventoryStatus(
       oldItem.quantity,
@@ -384,12 +406,14 @@ export async function updateItemDetails(
       new: payload.internal_notes || "",
     };
   }
+
   if (payload.active !== undefined && payload.active !== oldItem.active) {
     changes.active = {
       old: String(oldItem.active),
       new: String(payload.active),
     };
   }
+
   if (
     payload.alert_threshold !== undefined &&
     payload.alert_threshold !== oldItem.alert_threshold

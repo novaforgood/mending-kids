@@ -577,6 +577,7 @@ export default function InventoryPage() {
           setSelectionClearSignal((s) => s + 1);
         }}
         item={selectedItem}
+        userEmail={userEmail}
         setItems={setItems}
         onAssignToMission={handleAssignToMission}
         onAddDocumentation={() => setIsDocModalOpen(true)}
