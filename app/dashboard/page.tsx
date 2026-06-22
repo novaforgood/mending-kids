@@ -147,29 +147,11 @@ export default function DashboardPage() {
       return dateA.getTime() - dateB.getTime();
     });
 
-  function getInventoryStatus(row: Row): {
-    label: string;
-    badgeClass: string;
-    priority: number;
-  } {
-    if (row.expiration && new Date(row.expiration) < now) {
-      return { label: "EXPIRED", badgeClass: "bg-red-100 text-red-800", priority: 0 };
-    }
-
-    if (row.alert_threshold != null && row.quantity < row.alert_threshold) {
-      return { label: "LOW STOCK", badgeClass: "bg-yellow-100 text-yellow-800", priority: 1 };
-    }
-
-    return { label: "IN STOCK", badgeClass: "bg-blue-100 text-blue-800", priority: 2 };
-  }
-
-  const itemStatusRows = [...rows]
-    .filter((row) => row.active)
-    .sort((a, b) => {
-      const statusDiff = getInventoryStatus(a).priority - getInventoryStatus(b).priority;
-      if (statusDiff !== 0) return statusDiff;
-      return (a.reference_number ?? "").localeCompare(b.reference_number ?? "");
-    })
+  const lowStockItems = rows
+    .filter(
+      (row) => row.active && row.alert_threshold != null && row.quantity < row.alert_threshold
+    )
+    .sort((a, b) => a.quantity / a.alert_threshold! - b.quantity / b.alert_threshold!)
     .slice(0, 6);
 
   function getExpirationInfo(expirationDate: string): {
@@ -191,29 +173,23 @@ export default function DashboardPage() {
         textColor: "text-red-600",
         text: "expired",
       };
-    } else if (diffDays <= 60) {
-      if (diffMonths > 0) {
-        return {
-          priority: "HIGH PRIORITY",
-          borderColor: "border-red-500",
-          textColor: "text-red-600",
-          text: `expire in ${diffMonths} month${diffMonths > 1 ? "s" : ""}, ${remainingDays} days`,
-        };
-      }
-      return {
-        priority: "HIGH PRIORITY",
-        borderColor: "border-red-500",
-        textColor: "text-red-600",
-        text: `expire in ${diffDays} days`,
-      };
-    } else {
+    }
+
+    if (diffMonths > 0) {
       return {
         priority: "MEDIUM PRIORITY",
         borderColor: "border-yellow-500",
         textColor: "text-yellow-600",
-        text: `expire in ${diffMonths} months, ${remainingDays} days`,
+        text: `expire in ${diffMonths} month${diffMonths > 1 ? "s" : ""}, ${remainingDays} days`,
       };
     }
+
+    return {
+      priority: "MEDIUM PRIORITY",
+      borderColor: "border-yellow-500",
+      textColor: "text-yellow-600",
+      text: `expire in ${diffDays} days`,
+    };
   }
 
   function formatDate(dateStr: string): string {
@@ -526,23 +502,23 @@ export default function DashboardPage() {
           <div className="bg-white border border-gray-200 rounded-lg p-6 h-[500px] flex flex-col">
             <h2 className="text-lg font-semibold mb-4">Expiration Alerts</h2>
 
-            <div className="space-y-3 overflow-y-auto flex-1">
+            <div className="space-y-3 overflow-y-auto flex-1 mb-4">
               {expirationItems.map((item) => {
                 const { text, priority, borderColor, textColor } = getExpirationInfo(item.expiration!);
                 return (
-                  <div key={`exp-${item.id}`} className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={`border ${borderColor} ${textColor} text-xs font-bold px-2 py-1 rounded whitespace-nowrap`}
-                        >
-                          {priority}
-                        </span>
-                        <span className="text-gray-700 text-sm">
-                          {item.quantity} {item.unit} {item.reference_number} {text} (
-                          {formatDate(item.expiration!)})
-                        </span>
-                      </div>
+                  <div key={`exp-${item.id}`} className="flex justify-between items-center text-sm">
+                    <span className="text-black">
+                      {item.item_description ?? item.reference_number ?? "Unknown item"}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`border ${borderColor} ${textColor} text-xs font-bold px-2 py-1 rounded whitespace-nowrap`}
+                      >
+                        {priority}
+                      </span>
+                      <span className="text-gray-600">
+                        {text} ({formatDate(item.expiration!)})
+                      </span>
                       <Link href="/inventory" className="text-gray-400 text-lg hover:text-gray-600">
                         →
                       </Link>
@@ -552,14 +528,21 @@ export default function DashboardPage() {
               })}
 
               {expirationItems.length === 0 && (
-                <div className="text-gray-500 text-center py-4">No expiration alerts</div>
+                <div className="text-sm text-gray-500 text-center py-2">No expiration alerts</div>
               )}
             </div>
+
+            <Link
+              href="/alerts"
+              className="inline-block text-sm text-gray-600 border border-gray-300 px-3 py-1 rounded hover:bg-gray-50"
+            >
+              View All
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* Bottom Section - Calendar, Recent Activity, Item Status */}
+      {/* Bottom Section - Calendar, Recent Activity, Low Stock Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar */}
         <div className="lg:col-span-1">
@@ -681,34 +664,36 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Item Status Updates */}
+        {/* Low Stock Alerts */}
         <div className="lg:col-span-1">
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Item Status Updates</h2>
+          <div className="bg-white border border-gray-200 rounded-lg p-6 h-[500px] flex flex-col">
+            <h2 className="text-lg font-semibold mb-4">Low Stock Alerts</h2>
 
-            <div className="space-y-3 mb-4">
-              {itemStatusRows.map((item) => {
-                const status = getInventoryStatus(item);
-                return (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
-                    <span className="text-black">{item.item_description || item.reference_number || "Unknown item"}</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`${status.badgeClass} text-xs px-2 py-1 rounded`}>{status.label}</span>
-                      <span className="text-gray-600">
-                        {item.quantity} {item.unit}
-                      </span>
-                    </div>
+            <div className="space-y-3 overflow-y-auto flex-1 mb-4">
+              {lowStockItems.map((item) => (
+                <div key={item.id} className="flex justify-between items-center text-sm">
+                  <span className="text-black">
+                    {item.item_description || item.reference_number || "Unknown item"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">LOW STOCK</span>
+                    <span className="text-gray-600">
+                      {item.quantity}/{item.alert_threshold}
+                    </span>
+                    <Link href="/inventory" className="text-gray-400 text-lg hover:text-gray-600">
+                      →
+                    </Link>
                   </div>
-                );
-              })}
+                </div>
+              ))}
 
-              {itemStatusRows.length === 0 && (
-                <div className="text-sm text-gray-500 text-center py-2">No item status updates</div>
+              {lowStockItems.length === 0 && (
+                <div className="text-sm text-gray-500 text-center py-2">No low stock alerts</div>
               )}
             </div>
 
             <Link
-              href="/inventory-status"
+              href="/alerts"
               className="inline-block text-sm text-gray-600 border border-gray-300 px-3 py-1 rounded hover:bg-gray-50"
             >
               View All
