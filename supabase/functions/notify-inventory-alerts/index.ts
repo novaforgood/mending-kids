@@ -1,9 +1,9 @@
 // Deploy (from repo root):
 //
 //   supabase login
-//   supabase link --project-ref YOUR_PROJECT_REF
-//   supabase secrets set --env-file .env --project-ref YOUR_PROJECT_REF
-//   supabase functions deploy notify-inventory-alerts --project-ref YOUR_PROJECT_REF
+//   supabase link --project-ref fmuyqtuafxmlnggbjdvd
+//   supabase secrets set --env-file .env --project-ref fmuyqtuafxmlnggbjdvd
+//   supabase functions deploy notify-inventory-alerts --project-ref fmuyqtuafxmlnggbjdvd
 //
 // Invoke manually:
 //
