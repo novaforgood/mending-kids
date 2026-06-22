@@ -8,10 +8,11 @@ import { fetchAlertThresholdDays } from "../settings/alert-threshold/actions";
 type Row = {
   id: number;
   created_at: string;
-  product: string;
+  item_description: string | null;
   quantity: number;
   alert_threshold: number;
-  expiration_date: string | null;
+  expiration: string | null;
+  active: boolean;
 };
 
 type Filter = "all" | "expiration" | "low-stock";
@@ -57,13 +58,14 @@ export default function AlertsPage() {
 
   const expirationItems = rows
     .filter((row) => {
-      if (!row.expiration_date) return false;
-      const expDate = new Date(row.expiration_date);
+      if (!row.active) return false;
+      if (!row.expiration) return false;
+      const expDate = new Date(row.expiration);
       return expDate <= expirationCutoff;
     })
     .sort((a, b) => {
-      const dateA = new Date(a.expiration_date!);
-      const dateB = new Date(b.expiration_date!);
+      const dateA = new Date(a.expiration!);
+      const dateB = new Date(b.expiration!);
       return dateA.getTime() - dateB.getTime();
     });
 
@@ -88,16 +90,13 @@ export default function AlertsPage() {
 
     if (diffDays < 0) {
       return { priority: "HIGH PRIORITY", borderColor: "border-red-500", textColor: "text-red-600", text: "expired" };
-    } else if (diffDays <= 60) {
-      // Within 2 months - high priority
-      if (diffMonths > 0) {
-        return { priority: "HIGH PRIORITY", borderColor: "border-red-500", textColor: "text-red-600", text: `expire in ${diffMonths} month${diffMonths > 1 ? "s" : ""}, ${remainingDays} days` };
-      }
-      return { priority: "HIGH PRIORITY", borderColor: "border-red-500", textColor: "text-red-600", text: `expire in ${diffDays} days` };
-    } else {
-      // More than 2 months - medium priority
-      return { priority: "MEDIUM PRIORITY", borderColor: "border-yellow-500", textColor: "text-yellow-600", text: `expire in ${diffMonths} months, ${remainingDays} days` };
     }
+
+    if (diffMonths > 0) {
+      return { priority: "MEDIUM PRIORITY", borderColor: "border-yellow-500", textColor: "text-yellow-600", text: `expire in ${diffMonths} month${diffMonths > 1 ? "s" : ""}, ${remainingDays} days` };
+    }
+
+    return { priority: "MEDIUM PRIORITY", borderColor: "border-yellow-500", textColor: "text-yellow-600", text: `expire in ${diffDays} days` };
   }
 
   function formatDate(dateStr: string): string {
@@ -140,7 +139,7 @@ export default function AlertsPage() {
           {showLowStock && lowStockItems.map((item) => (
             <div key={`stock-${item.id}`} className="bg-gray-100 rounded-lg p-4">
               <div className="flex items-center justify-between">
-                <span className="text-gray-900 font-medium">{item.product}</span>
+                <span className="text-gray-900 font-medium">{item.item_description ?? "Unknown item"}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-gray-700 text-sm">{item.quantity}/{item.alert_threshold}</span>
                   <Link href="/kian-test-table" className="text-gray-400 text-lg hover:text-gray-600">→</Link>
@@ -157,7 +156,7 @@ export default function AlertsPage() {
 
           {/* Expiration items */}
           {showExpiration && expirationItems.map((item) => {
-            const { text, priority, borderColor, textColor } = getExpirationInfo(item.expiration_date!);
+            const { text, priority, borderColor, textColor } = getExpirationInfo(item.expiration!);
             return (
               <div key={`exp-${item.id}`} className="bg-gray-100 rounded-lg p-4">
                 <div className="flex items-center justify-between">
@@ -166,7 +165,7 @@ export default function AlertsPage() {
                       {priority}
                     </span>
                     <span className="text-gray-700">
-                      {item.quantity} {item.product} {text} ({formatDate(item.expiration_date!)})
+                      {item.quantity} {item.item_description ?? "Unknown item"} {text} ({formatDate(item.expiration!)})
                     </span>
                   </div>
                   <Link href="/kian-test-table" className="text-gray-400 text-lg hover:text-gray-600">→</Link>

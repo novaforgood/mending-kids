@@ -160,7 +160,7 @@ export async function fetchMissionDetail(missionId: number) {
 export async function fetchInventory() {
   const { data, error } = await supabaseServer
     .from("inventory")
-    .select("id, item_description, manufacturer, reference_number, expiration_date, quantity, unit_of_measure")
+    .select("id, item_description, manufacturer, reference_number, expiration, quantity, unit_of_measure")
     .order("item_description", { ascending: true });
   if (error) throw new Error(error.message);
   return data ?? [];

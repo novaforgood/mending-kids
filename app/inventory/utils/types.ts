@@ -68,6 +68,7 @@ export interface Props {
   isOpen: boolean;
   onClose: () => void;
   item: InventoryItem | null;
+  userEmail?: string;
   setItems?: React.Dispatch<React.SetStateAction<InventoryItem[]>>;
   onAssignToMission?: () => void;
   onAddDocumentation?: () => void;

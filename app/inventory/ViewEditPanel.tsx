@@ -119,9 +119,9 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
   }
 
   async handleAddQuantityConfirm(quantity: number, notes: string) {
-    const { item } = this.props;
+    const { item, userEmail } = this.props;
     if (!item) return;
-    await addItemQuantity(item.id, quantity, notes, "user@email.com");
+    await addItemQuantity(item.id, quantity, notes, userEmail ?? "");
     await this.loadInventoryEntries();
     await this.loadActivity();
     if (this.props.setItems) {
@@ -282,7 +282,7 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
           value={(form[key] as string) || (placeholder ?? "")}
           onSave={async (v) => {
             updateField(key, v);
-            await updateItemDetails(item.id, { [key]: v } as UpdateItemDetailsPayload, "user@email.com");
+            await updateItemDetails(item.id, { [key]: v } as UpdateItemDetailsPayload, this.props.userEmail ?? "");
           }}
         />
       );
@@ -318,7 +318,7 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
           value={form.alert_threshold || ""}
           onSave={async (v) => {
             updateField("alert_threshold", v);
-            await updateItemDetails(item.id, { alert_threshold: parseThreshold(v) }, "user@email.com");
+            await updateItemDetails(item.id, { alert_threshold: parseThreshold(v) }, this.props.userEmail ?? "");
           }}
         />
       );
@@ -367,7 +367,7 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
               value={form.internal_notes || item.internal_notes || ""}
               onSave={async (v) => {
                 updateField("internal_notes", v);
-                await updateItemDetails(item.id, { internal_notes: v }, "user@email.com");
+                await updateItemDetails(item.id, { internal_notes: v }, this.props.userEmail ?? "");
               }}
             />
           )}
@@ -512,7 +512,7 @@ export default class ViewEditPanel extends React.Component<Props, State & { isAd
                     await updateItemDetails(
                       item.id,
                       { ...rest, alert_threshold: parsedThreshold },
-                      "user@email.com"
+                      this.props.userEmail ?? ""
                     );
                     this.setState({ isEditing: false });
                   }}

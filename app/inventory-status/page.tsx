@@ -13,7 +13,8 @@ type InventoryRow = {
   unit: string | null;
   unit_of_measure: string | null;
   alert_threshold: number | null;
-  expiration_date: string | null;
+  expiration: string | null;
+  active: boolean;
 };
 
 function formatDate(dateStr: string | null): string {
@@ -31,7 +32,7 @@ function getInventoryStatus(row: InventoryRow): {
   priority: number;
 } {
   const now = new Date();
-  if (row.expiration_date && new Date(row.expiration_date) < now) {
+  if (row.expiration && new Date(row.expiration) < now) {
     return { label: "EXPIRED", badgeClass: "bg-red-100 text-red-800", priority: 0 };
   }
   if (row.alert_threshold != null && row.quantity < row.alert_threshold) {
@@ -56,7 +57,9 @@ export default function InventoryStatusPage() {
     loadRows();
   }, []);
 
-  const orderedRows = [...rows].sort((a, b) => {
+  const orderedRows = [...rows]
+    .filter((row) => row.active)
+    .sort((a, b) => {
     const statusDiff = getInventoryStatus(a).priority - getInventoryStatus(b).priority;
     if (statusDiff !== 0) return statusDiff;
     return (a.reference_number ?? "").localeCompare(b.reference_number ?? "");
@@ -101,7 +104,7 @@ export default function InventoryStatusPage() {
                         {row.quantity} {row.unit ?? row.unit_of_measure ?? ""}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">{row.alert_threshold ?? "-"}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{formatDate(row.expiration_date)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{formatDate(row.expiration)}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`${status.badgeClass} text-xs px-2 py-1 rounded`}>{status.label}</span>
                       </td>
