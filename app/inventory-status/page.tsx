@@ -14,6 +14,7 @@ type InventoryRow = {
   unit_of_measure: string | null;
   alert_threshold: number | null;
   expiration: string | null;
+  active: boolean;
 };
 
 function formatDate(dateStr: string | null): string {
@@ -56,7 +57,9 @@ export default function InventoryStatusPage() {
     loadRows();
   }, []);
 
-  const orderedRows = [...rows].sort((a, b) => {
+  const orderedRows = [...rows]
+    .filter((row) => row.active)
+    .sort((a, b) => {
     const statusDiff = getInventoryStatus(a).priority - getInventoryStatus(b).priority;
     if (statusDiff !== 0) return statusDiff;
     return (a.reference_number ?? "").localeCompare(b.reference_number ?? "");

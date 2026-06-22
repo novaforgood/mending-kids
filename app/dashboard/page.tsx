@@ -16,6 +16,7 @@ type Row = {
   unit_of_measure: string | null;
   alert_threshold: number | null;
   expiration: string | null;
+  active: boolean;
 };
 
 type Mission = {
@@ -135,6 +136,7 @@ export default function DashboardPage() {
 
   const expirationItems = rows
     .filter((row) => {
+      if (!row.active) return false;
       if (!row.expiration) return false;
       const expDate = new Date(row.expiration);
       return expDate <= expirationCutoff;
@@ -162,6 +164,7 @@ export default function DashboardPage() {
   }
 
   const itemStatusRows = [...rows]
+    .filter((row) => row.active)
     .sort((a, b) => {
       const statusDiff = getInventoryStatus(a).priority - getInventoryStatus(b).priority;
       if (statusDiff !== 0) return statusDiff;

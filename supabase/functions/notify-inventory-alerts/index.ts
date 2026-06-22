@@ -21,6 +21,7 @@ type InventoryRow = {
   alert_threshold: number | null;
   expiration: string | null;
   location: string | null;
+  active: boolean;
 };
 
 // Prefer PROJECT_* vars (used for local testing against prod data) and fall back to
@@ -41,7 +42,7 @@ Deno.serve(async (_req: Request) => {
     // 1. Fetch all inventory rows
     const { data: allItems, error: inventoryError } = await supabase
       .from("inventory")
-      .select("id, item_description, quantity, alert_threshold, expiration, location");
+      .select("id, item_description, quantity, alert_threshold, expiration, location, active");
 
     if (inventoryError) throw new Error(`Inventory query failed: ${inventoryError.message}`);
 
@@ -66,6 +67,7 @@ Deno.serve(async (_req: Request) => {
 
     const expiringItems = rows
       .filter((r) => {
+        if (!r.active) return false;
         if (!r.expiration) return false;
         return new Date(r.expiration) <= expirationCutoff;
       })

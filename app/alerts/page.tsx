@@ -12,6 +12,7 @@ type Row = {
   quantity: number;
   alert_threshold: number;
   expiration: string | null;
+  active: boolean;
 };
 
 type Filter = "all" | "expiration" | "low-stock";
@@ -57,6 +58,7 @@ export default function AlertsPage() {
 
   const expirationItems = rows
     .filter((row) => {
+      if (!row.active) return false;
       if (!row.expiration) return false;
       const expDate = new Date(row.expiration);
       return expDate <= expirationCutoff;
