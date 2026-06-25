@@ -1,22 +1,33 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { supabaseBrowser as supabase } from "@/lib/supabase/client";
 import styles from "../login/login.module.css";
 
 export default function ResetPasswordPage() {
+  const router = useRouter();
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
   const handleUpdate = async () => {
+    if (password.length < 6) {
+      setMessage("Password must be at least 6 characters.");
+      return;
+    }
+
     const { error } = await supabase.auth.updateUser({
       password,
     });
 
-    if (error) setMessage(error.message);
-    else setMessage("Password updated! You can now log in.");
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage("Password updated! Redirecting to login...");
+      setTimeout(() => router.push("/login"), 1500);
+    }
   };
 
   return (
