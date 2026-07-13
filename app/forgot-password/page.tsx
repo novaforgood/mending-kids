@@ -4,19 +4,35 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { supabaseBrowser as supabase } from "@/lib/supabase/client";
+import { ensureAccountForReset } from "./actions";
 import styles from "../login/login.module.css";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleReset = async () => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    if (loading) return;
+    setLoading(true);
+    setMessage("");
 
-    if (error) setMessage(error.message);
-    else setMessage("Check your email for the reset link!");
+    try {
+      // Create the account first if this email is new; existing accounts are
+      // left as-is. Either way there's now a user for the recovery email.
+      await ensureAccountForReset(email);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      });
+
+      if (error) setMessage(error.message);
+      else setMessage("Check your email for the reset link!");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,8 +57,13 @@ export default function ForgotPasswordPage() {
           />
         </div>
 
-        <button className={styles.button} type="button" onClick={handleReset}>
-          Send Reset Email
+        <button
+          className={styles.button}
+          type="button"
+          onClick={handleReset}
+          disabled={loading}
+        >
+          {loading ? "Sending..." : "Send Reset Email"}
         </button>
 
         {message && <p className={styles.message}>{message}</p>}
