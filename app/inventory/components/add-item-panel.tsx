@@ -310,20 +310,18 @@ export default function AddItemPanel({
 
           <div>
             {label("Location", true, errors.location)}
-            <div style={{ position: "relative" }}>
-              <select
-                value={location}
-                onChange={(e) => setLocation(e.currentTarget.value)}
-                style={selectStyle(!!location)}
-              >
-                <option value="">Select Location</option>
-                <option value="warehouse">Warehouse</option>
-                <option value="clinic">Clinic</option>
-                <option value="storage">Storage</option>
-                <option value="other">Other</option>
-              </select>
-              <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#6B778C", fontSize: 12 }}>▾</span>
-            </div>
+            <Textfield
+              list="location-suggestions"
+              placeholder="e.g. Rack 16 Shelf B"
+              value={location}
+              onChange={(e) => setLocation(e.currentTarget.value)}
+            />
+            <datalist id="location-suggestions">
+              <option value="Warehouse" />
+              <option value="Clinic" />
+              <option value="Storage" />
+              <option value="Other" />
+            </datalist>
           </div>
         </div>
       ) : (
