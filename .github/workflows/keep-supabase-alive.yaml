@@ -1,15 +1,32 @@
 name: Keep Supabase Alive
+
 on:
   schedule:
     - cron: '0 12 */3 * *'
   workflow_dispatch: {}
+
 jobs:
   ping-supabase:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - name: Ping Supabase REST endpoint
         run: |
           curl -sf -o /dev/null -w "%{http_code}\n" \
             "${{ vars.SUPABASE_URL }}/rest/v1/inventory?select=id&limit=1" \
             -H "apikey: ${{ vars.SUPABASE_KEY }}" \
             -H "Authorization: Bearer ${{ vars.SUPABASE_KEY }}"
+
+      - name: Commit and push to keepalive branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B keepalive
+          mkdir -p .keepalive
+          echo "Last ping: $(date -u)" > .keepalive/last-ping.txt
+          git add .keepalive/last-ping.txt
+          git commit -m "chore: keepalive ping $(date -u +%Y-%m-%d)" --allow-empty
+          git push -f origin keepalive
